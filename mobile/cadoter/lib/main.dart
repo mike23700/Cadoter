@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'core/session.dart';
 import 'core/theme.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  // Le splash natif reste affiché jusqu'à ce que SplashScreen soit prêt à prendre le relais
+  FlutterNativeSplash.preserve(widgetsBinding: WidgetsFlutterBinding.ensureInitialized());
+  // Polices embarquées dans assets/google_fonts : aucun téléchargement, rendu immédiat même hors ligne
+  GoogleFonts.config.allowRuntimeFetching = false;
   runApp(CadoterApp(session: Session()));
 }
 

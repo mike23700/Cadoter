@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
-import { api, ApiError, CustomRequest, formatPrice, Gift, Order } from "../api";
+import { api, ApiError, CustomRequest, formatPrice, Gift, Order, Wrapping } from "../api";
 import { ErrorBox, Field, fieldError, Loading, Modal } from "../components";
 import { Icon } from "../icons";
 import { useApi, useStore } from "../store";
@@ -21,6 +21,7 @@ export default function Admin() {
         <nav>
           <NavLink to="/admin" end><Icon name="clock" size={18} />Tableau de bord</NavLink>
           <NavLink to="/admin/cadeaux"><Icon name="gift" size={18} />Cadeaux</NavLink>
+          <NavLink to="/admin/emballages"><Icon name="image" size={18} />Emballages</NavLink>
           <NavLink to="/admin/commandes"><Icon name="list" size={18} />Commandes</NavLink>
           <NavLink to="/admin/demandes"><Icon name="mail" size={18} />Demandes perso.</NavLink>
         </nav>
@@ -34,6 +35,7 @@ export default function Admin() {
         <Routes>
           <Route index element={<Dashboard />} />
           <Route path="cadeaux" element={<Gifts />} />
+          <Route path="emballages" element={<Wrappings />} />
           <Route path="commandes" element={<Orders />} />
           <Route path="demandes" element={<Requests />} />
         </Routes>
@@ -200,6 +202,119 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
           <label className="check"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>En ligne</label>
           <label className="check"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>À la une (page d'accueil)</label>
         </div>
+        <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Enregistrement…" : "Enregistrer"}</button>
+      </form>
+    </Modal>
+  );
+}
+
+function Wrappings() {
+  const { notify } = useStore();
+  const { data, error, loading, reload } = useApi<Wrapping[]>("/admin/wrappings");
+  const [editing, setEditing] = useState<Wrapping | "new" | null>(null);
+
+  const toggle = async (w: Wrapping) => {
+    await api(`/admin/wrappings/${w.id}`, { method: "PUT", body: { is_active: !w.is_active } });
+    reload();
+  };
+  const remove = async (w: Wrapping) => {
+    if (!window.confirm(`Supprimer l'emballage « ${w.name} » ? Les commandes passées gardent leur historique.`)) return;
+    await api(`/admin/wrappings/${w.id}`, { method: "DELETE" });
+    notify("Emballage supprimé.");
+    reload();
+  };
+
+  return (
+    <>
+      <div className="admin-head">
+        <h1 className="h1">Emballages</h1>
+        <button className="btn btn-primary" onClick={() => setEditing("new")}>Nouvel emballage <Icon name="plus" size={18} /></button>
+      </div>
+      <p className="muted small" style={{ marginBottom: 20 }}>
+        Proposés au moment de commander un cadeau et dans le formulaire « cadeau personnalisé », sur le web et le mobile.
+        Un emballage hors ligne n'est plus proposé aux clients.
+      </p>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th></th><th>Emballage</th><th>Supplément</th><th>Ordre</th><th>En ligne</th><th></th></tr></thead>
+            <tbody>
+              {data?.map(w => (
+                <tr key={w.id}>
+                  <td>{w.image_url && <img src={w.image_url} alt="" className="table-thumb" />}</td>
+                  <td><b>{w.name}</b><br /><span className="note">{w.detail}</span></td>
+                  <td>{w.price ? `+ ${formatPrice(w.price)}` : "Offert"}</td>
+                  <td>{w.position}</td>
+                  <td><button className={`switch ${w.is_active ? "on" : ""}`} onClick={() => toggle(w)} aria-label="En ligne" aria-pressed={w.is_active} /></td>
+                  <td className="actions">
+                    <button className="link" onClick={() => setEditing(w)}>Modifier</button>
+                    <button className="link-plain" onClick={() => remove(w)}>Supprimer</button>
+                  </td>
+                </tr>
+              ))}
+              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucun emballage. Créez le premier !</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && <WrappingForm wrapping={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify("Emballage enregistré."); }} />}
+    </>
+  );
+}
+
+function WrappingForm({ wrapping, onClose, onSaved }: { wrapping: Wrapping | null; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    name: wrapping?.name ?? "", detail: wrapping?.detail ?? "", price: wrapping ? String(wrapping.price) : "0",
+    position: wrapping ? String(wrapping.position) : "", is_active: wrapping?.is_active ?? true,
+  });
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(wrapping?.image_url ?? null);
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const fd = new FormData();
+    Object.entries(form).forEach(([k, v]) => fd.append(k, typeof v === "boolean" ? (v ? "1" : "0") : v));
+    if (image) fd.append("image", image);
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(wrapping ? `/admin/wrappings/${wrapping.id}` : "/admin/wrappings", { body: fd });
+      onSaved();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={wrapping ? "Modifier l'emballage" : "Nouvel emballage"} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="image-picker">
+          {preview ? <img src={preview} alt="" /> : <div className="photo-empty"><Icon name="image" size={30} /></div>}
+          <Field label={`Photo ${wrapping ? "" : "*"} (JPG, PNG, WEBP · 5 Mo max.)`} error={fieldError(err, "image")}>
+            <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => {
+              const f = e.target.files?.[0] ?? null;
+              setImage(f);
+              if (f) setPreview(URL.createObjectURL(f));
+            }} />
+          </Field>
+        </div>
+        <Field label="Nom *" error={fieldError(err, "name")}><input className="input" required maxLength={120} value={form.name} onChange={set("name")} placeholder="Rosé signature" /></Field>
+        <Field label="Détail" error={fieldError(err, "detail")}><input className="input" maxLength={190} value={form.detail} onChange={set("detail")} placeholder="Papier rosé · Ruban magenta" /></Field>
+        <div className="grid-2">
+          <Field label="Supplément (FCFA, 0 = offert)" error={fieldError(err, "price")}><input className="input" type="number" min={0} value={form.price} onChange={set("price")} /></Field>
+          <Field label="Ordre d'affichage" error={fieldError(err, "position")}><input className="input" type="number" min={0} value={form.position} onChange={set("position")} placeholder="Automatique" /></Field>
+        </div>
+        <label className="check">
+          <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
+          <span className="box"><Icon name="check" size={14} /></span>En ligne (proposé aux clients)
+        </label>
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
         <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Enregistrement…" : "Enregistrer"}</button>
       </form>

@@ -58,7 +58,7 @@ export type GiftList = {
   counts: { total: number; reserved: number; available: number };
 };
 
-export type Wrapping = { id: number; code: string; name: string; detail: string; price: number; image_url: string | null };
+export type Wrapping = { id: number; code: string; name: string; detail: string | null; price: number; position: number; is_active: boolean; image_url: string | null };
 
 export type Meta = {
   occasions: string[];

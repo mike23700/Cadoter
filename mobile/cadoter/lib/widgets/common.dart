@@ -208,7 +208,7 @@ class GiftTile extends StatelessWidget {
   Widget build(BuildContext context) => GestureDetector(
         onTap: onTap,
         behavior: HitTestBehavior.opaque,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           NetImage(gift.imageUrl, aspect: aspect, radius: 16),
           const SizedBox(height: 12),
           StatusBadge(gift.available ? 'Disponible' : 'Indisponible', ok: gift.available),
@@ -220,6 +220,35 @@ class GiftTile extends StatelessWidget {
           Text(formatPrice(gift.price, gift.currency), style: T.sans(15, weight: FontWeight.w600, color: AppColors.magenta)),
         ]),
       );
+}
+
+/// Grille 2 colonnes à hauteur libre (pas de débordement quelle que soit la taille de police).
+/// Un dernier élément impair est affiché en pleine largeur, comme dans la maquette du catalogue.
+class GiftGrid extends StatelessWidget {
+  const GiftGrid({super.key, required this.gifts, required this.onTap, this.wideLast = false});
+  final List<Gift> gifts;
+  final void Function(Gift) onTap;
+  final bool wideLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    final pairs = wideLast ? gifts.length ~/ 2 * 2 : gifts.length;
+    for (var i = 0; i < pairs; i += 2) {
+      rows.add(Padding(
+        padding: const EdgeInsets.only(bottom: 22),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: GiftTile(gifts[i], onTap: () => onTap(gifts[i]))),
+          const SizedBox(width: 14),
+          Expanded(child: i + 1 < pairs ? GiftTile(gifts[i + 1], onTap: () => onTap(gifts[i + 1])) : const SizedBox()),
+        ]),
+      ));
+    }
+    if (wideLast && gifts.length.isOdd) {
+      rows.add(GiftTile(gifts.last, aspect: 354 / 150, onTap: () => onTap(gifts.last)));
+    }
+    return Column(children: rows);
+  }
 }
 
 class FieldLabel extends StatelessWidget {

@@ -4,6 +4,7 @@ import '../core/api.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
+import 'shell.dart';
 
 /// Ouvre la connexion si besoin. Renvoie true si l'utilisateur est connecté au retour.
 Future<bool> ensureLoggedIn(BuildContext context) async {
@@ -12,9 +13,14 @@ Future<bool> ensureLoggedIn(BuildContext context) async {
   return context.mounted && SessionScope.read(context).isLoggedIn;
 }
 
-/// « Mobile · Connexion »
+/// « Mobile · Connexion ». Avec [gate], c'est le passage obligatoire avant l'accueil (pas de retour possible).
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.gate = false});
+  final bool gate;
+
+  /// Remplace toute la pile par l'écran de connexion obligatoire (après onboarding ou déconnexion).
+  static void openGate(BuildContext context) => Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen(gate: true)), (_) => false);
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -27,12 +33,21 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
   ApiException? _error;
 
+  void _done() {
+    if (widget.gate) {
+      SessionScope.read(context).goTab(0);
+      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     setState(() { _busy = true; _error = null; });
     try {
       await SessionScope.read(context).login(_login.text.trim(), _password.text);
-      if (mounted) Navigator.pop(context);
+      if (mounted) _done();
     } on ApiException catch (e) {
       setState(() => _error = e);
     } finally {
@@ -42,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: const TopBar('Se connecter'),
+        appBar: TopBar('Se connecter', showBack: !widget.gate),
         body: SafeArea(
           child: Form(
             key: _form,
@@ -86,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 22),
               SecondaryButton('Créer un compte', onPressed: () async {
                 await Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen()));
-                if (context.mounted && SessionScope.read(context).isLoggedIn) Navigator.pop(context);
+                if (context.mounted && SessionScope.read(context).isLoggedIn) _done();
               }),
             ]),
           ),

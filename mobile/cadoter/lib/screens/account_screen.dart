@@ -77,7 +77,7 @@ class AccountScreen extends StatelessWidget {
             danger: true,
             onTap: () async {
               await session.logout();
-              if (context.mounted) toast(context, 'À bientôt !');
+              if (context.mounted) LoginScreen.openGate(context);
             },
           ),
         const SizedBox(height: 28),
@@ -123,16 +123,15 @@ class FavoritesScreen extends StatelessWidget {
           load: () async => ((await Api.instance.get('/favorites')) as List).map((e) => Gift.fromJson(e)).toList(),
           builder: (context, gifts, reload) => gifts.isEmpty
               ? const ErrorRetry('Aucun favori pour l’instant.')
-              : GridView.builder(
-                  padding: const EdgeInsets.all(kGutter),
-                  itemCount: gifts.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2, crossAxisSpacing: 14, mainAxisSpacing: 22, mainAxisExtent: 290),
-                  itemBuilder: (_, i) => GiftTile(gifts[i], onTap: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: gifts[i].slug)));
-                    reload();
-                  }),
-                ),
+              : ListView(padding: const EdgeInsets.all(kGutter), children: [
+                  GiftGrid(
+                    gifts: gifts,
+                    onTap: (g) async {
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: g.slug)));
+                      reload();
+                    },
+                  ),
+                ]),
         ),
       );
 }

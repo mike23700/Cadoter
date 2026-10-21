@@ -41,6 +41,7 @@ dependencies:
   shared_preferences: ^2.5.5
   flutter_secure_storage: ^11.2.0
   image_picker: ^1.2.3
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +53,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -66,6 +68,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/google_fonts/  # polices embarquées (google_fonts les utilise sans téléchargement)
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -97,3 +100,23 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Icône de l'application : dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_icon_foreground.png"
+
+# Écran de lancement natif : dart run flutter_native_splash:create
+# Le logo natif (172dp, centré) est repris à l'identique par SplashScreen, qui l'anime
+# ensuite vers la mise en page de la maquette « Mobile · Lancement ».
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/images/splash_native.png        # Android < 12 et iOS (4x = 688 px pour 172dp)
+  android_12:
+    color: "#FFFFFF"
+    image: assets/images/splash_android12.png   # Android 12+ : 1152 px, logo dans le cercle de 768 px
+  fullscreen: false

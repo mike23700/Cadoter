@@ -4,7 +4,6 @@ import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'auth_screens.dart';
-import 'shell.dart';
 
 /// « Mobile · Présentation — Offrir / Listes / Assistante »
 class OnboardingScreen extends StatefulWidget {
@@ -27,11 +26,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         'Parlez-nous de la personne. Notre assistante IA vous inspire, jusqu’au choix de l’emballage.', 'C’est parti !'),
   ];
 
-  Future<void> _finish({bool login = false}) async {
+  /// Fin de la présentation : connexion ou inscription obligatoire avant l'accueil.
+  Future<void> _finish() async {
     await SessionScope.read(context).setOnboarded();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
-    if (login) Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
+    if (mounted) LoginScreen.openGate(context);
   }
 
   @override
@@ -88,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 }),
                 const SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () => _finish(login: true),
+                  onTap: _finish,
                   child: Text('Déjà un compte ? Se connecter', style: T.sans(12, color: AppColors.gray)),
                 ),
               ]),

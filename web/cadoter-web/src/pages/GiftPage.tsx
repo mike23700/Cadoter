@@ -92,7 +92,7 @@ export default function GiftPage() {
               {wrap.image_url && <img src={wrap.image_url} alt="" />}
               <div>
                 <h3>La touche finale</h3>
-                <p>{wrap.name} · {wrap.detail}.</p>
+                <p>{wrap.name}{wrap.detail && ` · ${wrap.detail}`}.</p>
                 <Link to={`/commander/${gift.slug}`} className="link">Choisir ce modèle ou en découvrir d'autres →</Link>
               </div>
             </div>

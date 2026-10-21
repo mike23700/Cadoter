@@ -84,14 +84,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   }
                   final gifts = snap.data!;
                   if (gifts.isEmpty) return Text('Les premiers cadeaux arrivent bientôt.', style: T.sans(13, color: AppColors.gray));
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: gifts.length.clamp(0, 4),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2, crossAxisSpacing: 14, mainAxisSpacing: 22, mainAxisExtent: 290),
-                    itemBuilder: (_, i) => GiftTile(gifts[i],
-                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: gifts[i].slug)))),
+                  return GiftGrid(
+                    gifts: gifts.take(4).toList(),
+                    onTap: (g) => Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: g.slug))),
                   );
                 },
               ),

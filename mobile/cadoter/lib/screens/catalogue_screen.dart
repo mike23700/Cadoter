@@ -113,23 +113,11 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
               child: Text('Aucun cadeau ne correspond à ces critères.', textAlign: TextAlign.center, style: T.sans(13, color: AppColors.gray)),
             );
           }
-          // Grille 2 colonnes, le dernier élément impair en pleine largeur (comme la maquette)
-          final pairs = gifts.length ~/ 2 * 2;
-          void open(Gift g) => Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: g.slug)));
-          return Column(children: [
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: pairs,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 14, mainAxisSpacing: 22, mainAxisExtent: 290),
-              itemBuilder: (_, i) => GiftTile(gifts[i], onTap: () => open(gifts[i])),
-            ),
-            if (gifts.length.isOdd) ...[
-              const SizedBox(height: 22),
-              GiftTile(gifts.last, aspect: 354 / 150, onTap: () => open(gifts.last)),
-            ],
-          ]);
+          return GiftGrid(
+            gifts: gifts,
+            wideLast: true,
+            onTap: (g) => Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: g.slug))),
+          );
         },
       ),
       const SizedBox(height: 26),

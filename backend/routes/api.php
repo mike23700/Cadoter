@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\GiftController as AdminGift;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrder;
+use App\Http\Controllers\Api\Admin\WrappingController as AdminWrapping;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
@@ -60,6 +61,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/gifts/{gift}', [AdminGift::class, 'update']);
         Route::put('/gifts/{gift}', [AdminGift::class, 'update']);
         Route::delete('/gifts/{gift}', [AdminGift::class, 'destroy']);
+        Route::get('/wrappings', [AdminWrapping::class, 'index']);
+        Route::post('/wrappings', [AdminWrapping::class, 'store']);
+        Route::post('/wrappings/{wrapping}', [AdminWrapping::class, 'update']);
+        Route::put('/wrappings/{wrapping}', [AdminWrapping::class, 'update']);
+        Route::delete('/wrappings/{wrapping}', [AdminWrapping::class, 'destroy']);
         Route::get('/orders', [AdminOrder::class, 'index']);
         Route::put('/orders/{order}', [AdminOrder::class, 'update']);
         Route::get('/custom-requests', [AdminOrder::class, 'customRequests']);

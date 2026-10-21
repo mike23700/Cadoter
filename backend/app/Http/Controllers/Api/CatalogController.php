@@ -63,7 +63,7 @@ class CatalogController extends Controller
             'occasions' => self::OCCASIONS,
             'for_who' => self::FOR_WHO,
             'cities' => Gift::where('is_active', true)->distinct()->orderBy('city')->pluck('city'),
-            'wrappings' => Wrapping::orderBy('position')->get(),
+            'wrappings' => Wrapping::where('is_active', true)->orderBy('position')->orderBy('id')->get(),
             'payment_methods' => [
                 ['code' => 'orange_money', 'name' => 'Orange Money'],
                 ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money'],

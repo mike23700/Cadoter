@@ -43,7 +43,7 @@ Ports hôte : **5433** (Postgres) et **8001** (API), car 5432/8000 sont déjà p
 ### Web (`web/cadoter-web/`) — fait, branché sur l'API
 - Pages des maquettes : Accueil, Catalogue, Fiche cadeau, Mes listes, Liste partagée `/l/:code`, Assistante IA, Cadeau personnalisé + emballages, Inspirations + articles, Favoris
 - Connexion / inscription (mêmes champs que le mobile), menu compte, commande `/commander/:slug`, historique `/commandes`
-- **Administration `/admin`** (compte `role=admin`) : tableau de bord, CRUD des cadeaux avec photo, commandes (statuts), demandes personnalisées
+- **Administration `/admin`** (compte `role=admin`) : tableau de bord, CRUD des cadeaux avec photo, CRUD des emballages (photo, supplément, ordre, en ligne / hors ligne), commandes (statuts), demandes personnalisées
 - Les cadeaux affichés partout (accueil, catalogue, assistante) viennent de l'admin
 
 ### Mobile (`mobile/cadoter/`) — fait, branché sur l'API
@@ -107,6 +107,15 @@ npm install && npm run dev
 Administration : http://localhost:5173/admin
 
 ### 6.3 Mobile
+Téléphone branché en USB (recommandé) :
+```bash
+cd mobile/cadoter
+./run.sh            # rétablit « adb reverse tcp:8001 tcp:8001 » puis lance flutter run
+```
+⚠ La redirection USB saute à chaque débranchement du câble ou redémarrage du PC/adb.
+Symptôme : « Impossible de joindre le serveur ». Solution : relancer `./run.sh` (ou `adb reverse tcp:8001 tcp:8001`).
+
+Autres cas :
 ```bash
 cd mobile/cadoter
 flutter run                                           # émulateur Android : API sur 10.0.2.2:8001
@@ -114,6 +123,31 @@ flutter run --dart-define=API_URL=http://192.168.x.x:8001/api   # téléphone ph
 ```
 Trouver l'IP du PC : `hostname -I`. Le téléphone doit être sur le même réseau Wi-Fi.
 En version web (`flutter run -d chrome`), les photos ne s'affichent pas (restriction CORS du serveur de dev) : tester sur émulateur ou téléphone.
+
+Lancement sur le téléphone de test (Infinix X6885, Android 16, id `147967057K006591`) :
+```bash
+cd ~/Documents/Cadote/mobile/cadoter
+./run.sh 147967057K006591                                                   # par câble USB
+flutter run -d 147967057K006591 --release \
+  --dart-define=API_URL=http://192.168.1.171:8001/api                        # par Wi-Fi, fonctionne câble débranché
+```
+Après une modification de l'icône, du splash, des polices ou de `pubspec.yaml` : arrêter `flutter run` (touche `q`),
+puis `flutter clean && flutter pub get` et relancer (le rechargement à chaud ne suffit pas). Désinstaller l'app
+du téléphone si l'ancienne icône ou l'ancien splash restent affichés (cache du lanceur Android).
+
+### Dépannage (problèmes déjà rencontrés)
+| Symptôme | Cause | Solution |
+|----------|-------|----------|
+| Mobile : « Impossible de joindre le serveur. Vérifiez votre connexion. » alors que l'API tourne | Lancé avec `API_URL=http://localhost:8001/api` : le téléphone joint le PC via la redirection USB `adb reverse`, qui disparaît à chaque débranchement du câble ou redémarrage du PC / d'adb (`adb reverse --list` vide) | `adb reverse tcp:8001 tcp:8001` (l'app ouverte retrouve le serveur sans relancer) ou lancer avec `./run.sh` |
+| Mobile : même message, câble débranché | Avec `localhost`, aucun accès à l'API sans câble | Lancer avec l'IP Wi-Fi du PC (`hostname -I`, ex. `192.168.1.171`) ; même réseau Wi-Fi ; si bloqué : `sudo ufw allow 8001` |
+| Mobile : app inutilisable dans l'émulateur avec `localhost` | Dans l'émulateur, `localhost` = l'émulateur lui-même | `flutter run` sans `--dart-define` (utilise `10.0.2.2`) |
+| Mobile : après réouverture, retour à l'écran de connexion | Corrigé : la session est gardée en mémoire et n'est perdue que si le serveur refuse le jeton (401/403) | Si le cas réapparaît : vérifier que l'API répond (`curl -H Accept:application/json localhost:8001/api/me` → 401 attendu sans jeton) |
+| Mobile : écran blanc ou icône avant l'écran « Lancement » | Android 12+ impose un écran de démarrage système (icône dans un cercle, pas d'écran complet) | Corrigé : le splash natif affiche le logo (172dp, centré) et `SplashScreen` le reprend à la même place puis l'anime vers la maquette ; le natif reste affiché tant que le logo n'est pas prêt (`FlutterNativeSplash.preserve`) |
+| Mobile : bandes jaunes et noires « RenderFlex overflowed » sur les cartes cadeaux | Hauteur fixe de 290 px trop juste selon la taille de police du téléphone | Corrigé : `GiftGrid` (hauteur libre) dans `lib/widgets/common.dart` |
+| Web/mobile : « Identifiants incorrects » avec le bon mot de passe | Espace en trop copié avec le mot de passe | Corrigé côté API : espaces au début et à la fin tolérés |
+| pgAdmin : `password authentication failed for user "postgres"` | La base Docker n'a pas d'utilisateur `postgres` | Utilisateur `cadoter`, mot de passe `cadoter_pass`, port `5433`, base `cadoter` |
+| pgAdmin : la base `cadoter` n'apparaît pas | pgAdmin connecté au Postgres local (5432), pas à celui de Docker | Ajouter un serveur `localhost:5433` (voir §6.1) |
+| Web : ancien favicon affiché | Cache du navigateur | Rechargement forcé (Ctrl+Maj+R) |
 
 ### 6.4 Base de données — tables (créées)
 | Table | Colonnes principales |
@@ -205,6 +239,7 @@ Prérequis : backend démarré et base réinitialisée (§6.1), web lancé (§6.
 | 16 | Web, liste partagée | « ou l'offrir directement » → formulaire → Commander | Référence `CMD-…` affichée |
 | 17 | Web `/admin/commandes` | Passer la commande en « Payée » | Statut mis à jour ; l'élément de liste devient « Réservé » |
 | 18 | Web `/personnalise` | Envoyer une demande avec un emballage | Visible dans `/admin/demandes` |
+| 18 bis | Web `/admin/emballages` | « Nouvel emballage » (photo, nom, supplément 2000), puis le passer hors ligne | Proposé à la commande (web et mobile) avec « + 2 000 FCFA » ; hors ligne, il n'est plus proposé |
 | 19 | Web `/assistante` et mobile, onglet Assistante | Budget 40 000, « Elle aime le thé » | « Le rituel du thé » proposé en premier |
 | 20 | Web | Ma liste → « Ajouter un code d'accès », puis ouvrir le lien partagé | Code demandé ; mauvais code refusé |
 

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,6 +17,9 @@ class Session extends ChangeNotifier {
 
   bool get isLoggedIn => user != null;
 
+  /// Au démarrage, on n'attend pas le serveur plus de quelques secondes (sinon : mode hors ligne).
+  static const _startupTimeout = Duration(seconds: 5);
+
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     language = prefs.getString('language') ?? 'fr';
@@ -25,17 +30,28 @@ class Session extends ChangeNotifier {
 
   Future<void> _loadMeta() async {
     try {
-      meta = Meta.fromJson(await api.get('/meta'));
+      meta = Meta.fromJson(await api.get('/meta', timeout: _startupTimeout));
       notifyListeners();
     } catch (_) {/* hors ligne : valeurs par défaut */}
   }
 
+  /// Vérifie la session. Hors ligne (serveur injoignable), on garde l'utilisateur mémorisé :
+  /// seul un refus du serveur (jeton expiré / révoqué) déconnecte.
   Future<void> _loadUser() async {
+    final prefs = await SharedPreferences.getInstance();
     try {
-      user = User.fromJson(await api.get('/me'));
+      final json = await api.get('/me', timeout: _startupTimeout) as Map<String, dynamic>;
+      user = User.fromJson(json);
+      await prefs.setString('user', jsonEncode(json));
       await loadFavorites();
-    } catch (_) {
-      user = null;
+    } on ApiException catch (e) {
+      if (e.status == 401 || e.status == 403) {
+        user = null;
+        await prefs.remove('user');
+      } else {
+        final cached = prefs.getString('user');
+        user = cached != null ? User.fromJson(jsonDecode(cached)) : null;
+      }
     }
     notifyListeners();
   }
@@ -62,6 +78,7 @@ class Session extends ChangeNotifier {
   Future<void> _start(dynamic res) async {
     await api.setToken(res['token'] as String);
     user = User.fromJson(res['user']);
+    (await SharedPreferences.getInstance()).setString('user', jsonEncode(res['user']));
     await setOnboarded();
     await loadFavorites();
     notifyListeners();
@@ -78,6 +95,7 @@ class Session extends ChangeNotifier {
       await api.post('/logout');
     } catch (_) {}
     await api.setToken(null);
+    (await SharedPreferences.getInstance()).remove('user');
     user = null;
     favorites = {};
     tab = 0;

@@ -49,6 +49,10 @@ class _WrappingScreenState extends State<WrappingScreen> {
                     Text(w.name, style: T.sans(14, weight: FontWeight.w600)),
                     const SizedBox(height: 8),
                     Text(w.detail, style: T.sans(12, color: AppColors.gray)),
+                    if (w.price > 0) ...[
+                      const SizedBox(height: 6),
+                      Text('+ ${formatPrice(w.price)}', style: T.sans(12, weight: FontWeight.w600, color: AppColors.magenta)),
+                    ],
                     const SizedBox(height: 12),
                     Icon(_id == w.id ? Icons.check_circle_outline : Icons.radio_button_unchecked,
                         color: _id == w.id ? AppColors.magenta : AppColors.gray),

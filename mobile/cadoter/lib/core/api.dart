@@ -58,8 +58,8 @@ class Api {
         ...?extra,
       };
 
-  Future<dynamic> get(String path, {Map<String, String>? headers}) =>
-      _send(() => http.get(Uri.parse('$apiUrl$path'), headers: _headers(headers)));
+  Future<dynamic> get(String path, {Map<String, String>? headers, Duration? timeout}) =>
+      _send(() => http.get(Uri.parse('$apiUrl$path'), headers: _headers(headers)), timeout: timeout);
 
   Future<dynamic> post(String path, [Map<String, dynamic>? body]) => _send(() => http.post(
         Uri.parse('$apiUrl$path'),
@@ -85,10 +85,10 @@ class Api {
         return http.Response.fromStream(await req.send());
       });
 
-  Future<dynamic> _send(Future<http.Response> Function() call) async {
+  Future<dynamic> _send(Future<http.Response> Function() call, {Duration? timeout}) async {
     http.Response res;
     try {
-      res = await call().timeout(const Duration(seconds: 20));
+      res = await call().timeout(timeout ?? const Duration(seconds: 20));
     } catch (_) {
       throw ApiException('Impossible de joindre le serveur. Vérifiez votre connexion.');
     }
