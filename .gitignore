@@ -1,0 +1,37 @@
+# Flutter / Dart
+.dart_tool/
+.build/
+android/app/build/
+android/app/generated/
+ios/Runner/Generated/
+ios/Pods/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+*.iml
+*.lock
+!pubspec.lock
+
+# Web / Vite
+web/cadoter-web/node_modules/
+web/cadoter-web/dist/
+web/cadoter-web/.vite/
+*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env / secrets
+.env
+*.key
+*.pem
+
+# Logs
+*.log
