@@ -11,6 +11,7 @@ ios/Pods/
 *.iml
 *.lock
 !pubspec.lock
+!composer.lock
 
 # Web / Vite
 web/cadoter-web/node_modules/

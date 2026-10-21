@@ -1,74 +1,70 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
-class LanguageScreen extends StatelessWidget {
-  const LanguageScreen({super.key});
+import '../core/session.dart';
+import '../core/theme.dart';
+import '../widgets/common.dart';
+import 'onboarding_screen.dart';
+
+/// « Mobile · Choix de langue »
+class LanguageScreen extends StatefulWidget {
+  const LanguageScreen({super.key, this.fromSettings = false});
+  final bool fromSettings;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Choix de langue', style: TextStyle(color: Color(0xFF30232C), fontSize: 14)),
-        centerTitle: false, elevation: 0, backgroundColor: Colors.white,
-        automaticallyImplyLeading: false,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(width: 40, height: 40, decoration: BoxDecoration(
-              color: AppColors.magenta.withOpacity(0.1),
-              border: Border.all(color: AppColors.magenta, width: 1.7),
-              shape: BoxShape.circle,
-            )),
-            const SizedBox(height: 18),
-            Text('Bienvenue', style: const TextStyle(fontSize: 36, fontFamily: 'DM Serif Display', color: Color(0xFF30232C), height: 1.35)),
-            const SizedBox(height: 18),
-            Text('Choisissez la langue de l\'application.', style: const TextStyle(fontSize: 14, color: Color(0xFF786C74), height: 1.35)),
-            const SizedBox(height: 22),
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: AppColors.pinkBg,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Langue', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF30232C))),
-                  Container(width: 22, height: 22, decoration: BoxDecoration(
-                    color: AppColors.magenta.withOpacity(0.1),
-                    border: Border.all(color: AppColors.magenta, width: 1.7),
-                    shape: BoxShape.circle,
-                  )),
-                ],
-              ),
-            ),
-            const SizedBox(height: 22),
-            Container(
-              padding: const EdgeInsets.all(20),
-              color: AppColors.cream,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Français', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF30232C))),
-                  Container(width: 22, height: 22, decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF786C74), width: 1.7),
-                    borderRadius: BorderRadius.circular(50),
-                  )),
-                ],
-              ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pushReplacementNamed(context, '/onboarding'),
-                child: const Text('Continuer', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
+  State<LanguageScreen> createState() => _LanguageScreenState();
+}
+
+class _LanguageScreenState extends State<LanguageScreen> {
+  late String lang = SessionScope.read(context).language;
+
+  Widget _option(String code, String label) {
+    final on = lang == code;
+    return GestureDetector(
+      onTap: () => setState(() => lang = code),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 22),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(color: on ? AppColors.pinkBg : AppColors.cream, borderRadius: BorderRadius.circular(16)),
+        child: Row(children: [
+          Expanded(child: Text(label, style: T.sans(14, weight: FontWeight.w600))),
+          Icon(on ? Icons.check_circle_outline : Icons.radio_button_unchecked, color: on ? AppColors.magenta : AppColors.gray),
+        ]),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: widget.fromSettings ? const TopBar('Langue') : null,
+        body: SafeArea(
+          child: ListView(padding: EdgeInsets.zero, children: [
+            if (!widget.fromSettings) const BrandHeader(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(kGutter, 50, kGutter, 24),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.language, color: AppColors.magenta, size: 36),
+                const SizedBox(height: 22),
+                Text('On parle la même langue.', style: T.serif(34)),
+                const SizedBox(height: 18),
+                Text('Choisissez la langue qui vous ressemble. Vous pourrez la modifier dans les paramètres.',
+                    style: T.sans(14, color: AppColors.gray)),
+                const SizedBox(height: 46),
+                _option('fr', 'Français'),
+                _option('en', 'English'),
+                PrimaryButton(lang == 'fr' ? 'Continuer en français' : 'Continue in English', onPressed: () async {
+                  await SessionScope.read(context).setLanguage(lang);
+                  if (!context.mounted) return;
+                  if (widget.fromSettings) {
+                    Navigator.pop(context);
+                  } else {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const OnboardingScreen()));
+                  }
+                }),
+                const SizedBox(height: 22),
+                Center(child: Text('Votre langue, votre expérience.', style: T.sans(12, color: AppColors.gray))),
+              ]),
+            ),
+          ]),
+        ),
+      );
 }

@@ -24,139 +24,69 @@ Un utilisateur crée une liste pour un événement (anniversaire, mariage, naiss
 |--------|-------------|-------------|
 | Web | React 18 + TypeScript + Vite | `web/cadoter-web/` |
 | Mobile | Flutter 3.38 + Dart | `mobile/cadoter/` |
-| Backend | Laravel 13 + PHP 8.3 (Docker) | `backend/` (à créer) |
+| Backend | Laravel 13 + PHP 8.3 (Docker) | `backend/` |
 | Base de données | PostgreSQL 16 (Docker) | — |
-| Auth API | Laravel Sanctum | — |
-| Paiement | Agrégateur Mobile Money (Orange / MTN) | — |
+| Auth API | Laravel Sanctum (jeton Bearer) | — |
+| Paiement | Agrégateur Mobile Money (Orange / MTN) | à brancher |
 
-**Pas d'installation PHP en local** : tout le backend tourne dans Docker (idem projet PEKEGNO).
+**Pas d'installation PHP en local** : tout le backend tourne dans Docker.
+Ports hôte : **5433** (Postgres) et **8001** (API), car 5432/8000 sont déjà pris par PEKEGNO.
 
-## 5. Fonctionnalités déjà implémentées (Front)
-### Web (React)
-- Design system calqué sur la maquette Figma (magenta `#C90091`, crème `#FAF7F2`, Inter / DM Serif Display)
-- Routes : `/`, `/cadeaux`, `/cadeaux/:id`, `/listes`, `/l/:code`, `/assistante`, `/personnalise`, `/inspirations`, `/compte`
-- Pages : Home, Catalog, GiftPage, Lists, Shared (liste protégée par code), Assistant, Custom, Inspirations, Account
-- Store React : gestion des réservations (un cadeau = un seul réservateur)
-- Données mock dans `src/data.ts` (à remplacer par l'API)
+## 5. État d'avancement
 
-### Mobile (Flutter)
-- Thème `AppTheme` (couleurs maquette)
-- Écrans : Splash, Language, Onboarding ×3, Login, Signup, Home, Catalogue, Fiche cadeau, Mes listes, Créer une liste, Compte, Assistante IA, Cadeau personnalisé, Choix d'emballage, Blog
-- Navigation bottom : 5 onglets (Accueil / Cadeaux / Mes listes / Assistante / Compte)
-- Modèles : `Gift`, `GiftList`
+### Backend (`backend/`) — fait
+- Tables : `users` (+ phone, role, language), `gifts`, `wrappings`, `gift_lists`, `list_items`, `orders`, `custom_requests`, `favorites`, `personal_access_tokens`
+- Seeder : compte admin, compte démo Aïcha, 3 cadeaux, 3 emballages, liste « Mon anniversaire »
+- API complète (voir `routes/api.php`) : auth, catalogue filtrable, listes, liens marchands (aperçu Open Graph protégé SSRF), réservation (verrou anti-doublon), commandes, cadeau personnalisé, favoris, assistante, admin
+- Assistante : suggestions par règles sur le catalogue (même contrat d'API qu'un futur modèle IA)
 
-## 6. À faire côté Backend (Laravel + Docker)
+### Web (`web/cadoter-web/`) — fait, branché sur l'API
+- Pages des maquettes : Accueil, Catalogue, Fiche cadeau, Mes listes, Liste partagée `/l/:code`, Assistante IA, Cadeau personnalisé + emballages, Inspirations + articles, Favoris
+- Connexion / inscription (mêmes champs que le mobile), menu compte, commande `/commander/:slug`, historique `/commandes`
+- **Administration `/admin`** (compte `role=admin`) : tableau de bord, CRUD des cadeaux avec photo, commandes (statuts), demandes personnalisées
+- Les cadeaux affichés partout (accueil, catalogue, assistante) viennent de l'admin
 
-### 6.1 Fichiers Docker à créer (modèle PEKEGNO)
+### Mobile (`mobile/cadoter/`) — fait, branché sur l'API
+- Les 20 écrans des maquettes : Lancement, Langue, Présentation ×3, Connexion, Inscription, Accueil, Catalogue, Fiche cadeau, Mes listes, Création de liste, Liste éditable, Liste partagée proche, Assistante IA, Suggestions IA, Cadeau personnalisé, Choix d'emballage, Blog, Compte
+- + Commande, Favoris, Historique. Jeton stocké avec `flutter_secure_storage`
 
-**`docker-compose.yml`** (à la racine `backend/`)
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    container_name: cadotere-postgres
-    restart: always
-    environment:
-      POSTGRES_DB: cadotere
-      POSTGRES_USER: cadotere
-      POSTGRES_PASSWORD: cadotere_pass
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+## 6. Lancer le projet
 
-  backend:
-    build:
-      context: ./docker/php
-    image: cadotere-php
-    container_name: cadotere-backend
-    working_dir: /var/www
-    volumes:
-      - ./backend:/var/www
-    ports:
-      - "8000:8000"
-    depends_on:
-      - postgres
-    command: php artisan serve --host=0.0.0.0 --port=8000
-
-volumes:
-  postgres_data:
-```
-
-**`docker/php/Dockerfile`**
-```dockerfile
-FROM php:8.3-cli
-
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
-    libzip-dev \
-    unzip \
-    && docker-php-ext-install pdo_pgsql zip
-
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
-
-WORKDIR /app
-```
-
-### 6.2 Installation et démarrage (sans PHP en local)
+### 6.1 Backend
 ```bash
-# 1. Créer le projet Laravel
-composer create-project laravel/laravel backend
 cd backend
-
-# 2. Créer les dossiers Docker
-mkdir -p docker/php
-
-# 3. Copier docker-compose.yml + docker/php/Dockerfile (voir §6.1)
-
-# 4. Configurer .env (DB_CONNECTION=pgsql, DB_HOST=localhost, DB_PORT=5432, DB_DATABASE=cadotere, DB_USERNAME=cadotere, DB_PASSWORD=cadotere_pass)
-
-# 5. Créer la base PostgreSQL
-sudo docker run --rm --network=host postgres:16 \
-  psql -h localhost -U postgres -c "CREATE DATABASE cadotere;"
-sudo docker run --rm --network=host postgres:16 \
-  psql -h localhost -U postgres -c "CREATE USER cadotere WITH PASSWORD 'cadotere_pass';"
-sudo docker run --rm --network=host postgres:16 \
-  psql -h localhost -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE cadotere TO cadotere;"
-
-# 6. Builder l'image PHP et installer les dépendances
-sudo docker build -t cadotere-php docker/php/
-sudo docker run --rm -v "$PWD":/app -w /app --network=host \
-  cadotere-php composer install --no-interaction
-
-# 7. Générer la clé, lancer migrations et seeders
-sudo docker run --rm -v "$PWD":/app -w /app --network=host \
-  cadotere-php php artisan key:generate
-sudo docker run --rm -v "$PWD":/app -w /app --network=host \
-  cadotere-php php artisan migrate --force
-sudo docker run --rm -v "$PWD":/app -w /app --network=host \
-  cadotere-php php artisan db:seed --force
-
-# 8. Démarrer le serveur
-sudo docker compose up -d
+docker compose up -d                      # Postgres (5433) + API (http://localhost:8001)
+docker compose exec backend php artisan migrate:fresh --seed --force
+docker compose exec backend php artisan storage:link
 ```
+Comptes de démo : `admin@cadoter.com` / `Admin12345` (admin) · `aicha@exemple.com` / `password123`.
+Pour changer le mot de passe admin : `ADMIN_EMAIL` / `ADMIN_PASSWORD` dans `backend/.env`, puis relancer le seeder.
 
-### 6.3 Commandes utiles (Docker)
+Commandes utiles :
 ```bash
-# Voir les logs du backend
-sudo docker logs -f cadotere-backend
-
-# Voir les logs de Postgres
-sudo docker logs -f cadotere-postgres
-
-# Artisan (migrate, seed, route:list, tinker...)
-sudo docker run --rm -v "$PWD":/app -w /app --network=host \
-  cadotere-php php artisan migrate:fresh --seed --force
-sudo docker run --rm -v "$PWD":/app -w /app --network=host \
-  cadotere-php php artisan route:list
-sudo docker run --rm -it -v "$PWD":/app -w /app --network=host \
-  cadotere-php php artisan tinker
-
-# Arrêter
-sudo docker compose down
+docker compose logs -f backend
+docker compose exec backend php artisan route:list --path=api
+docker compose exec backend php artisan tinker
+docker compose exec backend composer require <paquet>
+docker compose down
 ```
 
-### 6.4 Base de données — tables nécessaires
+### 6.2 Web
+```bash
+cd web/cadoter-web
+cp .env.example .env    # VITE_API_URL=http://localhost:8001/api
+npm install && npm run dev
+```
+Administration : http://localhost:5173/admin
+
+### 6.3 Mobile
+```bash
+cd mobile/cadoter
+flutter run                                           # émulateur Android : API sur 10.0.2.2:8001
+flutter run --dart-define=API_URL=http://192.168.x.x:8001/api   # téléphone physique (IP du PC)
+```
+
+### 6.4 Base de données — tables (créées)
 | Table | Colonnes principales |
 |-------|----------------------|
 | `users` | id, name, email, phone, password, role, language (FR/EN), created_at |
@@ -168,7 +98,7 @@ sudo docker compose down
 | `countries_cities` | country, currency, cities[] (JSON ou table séparée) |
 | `personal_access_tokens` | Tokens Sanctum (auth API) |
 
-### 6.5 API endpoints à créer
+### 6.5 API endpoints (créés — détail dans `backend/routes/api.php`)
 **Auth (Sanctum)**
 - `POST /api/register` — nom, téléphone, email, mot de passe (8 car. min), CGU
 - `POST /api/login` — email ou téléphone
@@ -224,22 +154,26 @@ sudo docker compose down
 - Upload d'images (stockage local ou S3) pour listes et cadeaux.
 
 ## 8. Priorités d'implémentation
-1. Créer le projet Laravel + fichiers Docker (docker-compose.yml, docker/php/Dockerfile)
-2. Configurer connexion PostgreSQL via Docker
-3. Migrations + seeders (tables ci-dessus)
-4. API Auth (register/login/me)
-5. API Listes (CRUD + partage + code d'accès)
-6. API Cadeaux (catalogue + réservation + disponibilité)
-7. Connecter le front web
-8. Connecter le front mobile Flutter
-9. Intégration paiement Mobile Money
-10. Facturation côté boutique
+1. ~~Créer le projet Laravel + fichiers Docker~~ ✅
+2. ~~Configurer connexion PostgreSQL via Docker~~ ✅
+3. ~~Migrations + seeders~~ ✅
+4. ~~API Auth (register/login/me)~~ ✅
+5. ~~API Listes (CRUD + partage + code d'accès)~~ ✅
+6. ~~API Cadeaux (catalogue + réservation + disponibilité) + admin~~ ✅
+7. ~~Connecter le front web~~ ✅
+8. ~~Connecter le front mobile Flutter~~ ✅
+9. Intégration paiement Mobile Money (webhook Orange / MTN → passer la commande en `payee`) — **à faire**
+10. Cagnotte (`wallets`, `transactions`) — **à faire**
+11. Mot de passe oublié (email de réinitialisation) — **à faire**
+12. Assistante : brancher un vrai modèle IA derrière `POST /api/assistant/suggest` — **à faire**
+13. Traduction anglaise des textes (le choix de langue est enregistré) — **à faire**
+14. Tests automatisés (Pest côté Laravel) — **à faire**
 
 ## 9. Structure du projet
 ```
 /home/mike/Documents/Cadote/
 ├── A_FAIRE.md
-├── backend/                  ← Laravel (à créer)
+├── backend/                  ← Laravel 13 (fait)
 │   ├── docker-compose.yml
 │   ├── docker/php/Dockerfile
 │   └── ...
@@ -247,4 +181,5 @@ sudo docker compose down
 │   └── cadoter-web/          ← React + Vite + TS (fait)
 └── mobile/
     └── cadoter/              ← Flutter (fait)
+└── docs/cadote/              ← maquettes Figma exportées (PDF)
 ```

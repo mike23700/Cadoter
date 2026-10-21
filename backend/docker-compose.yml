@@ -1,0 +1,41 @@
+# CADOTER — backend Laravel + PostgreSQL (aucune installation PHP en local)
+# Ports hôte : 5433 (Postgres) et 8001 (API), car 5432/8000 sont pris par PEKEGNO.
+services:
+  postgres:
+    image: postgres:16
+    container_name: cadoter-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: cadoter
+      POSTGRES_USER: cadoter
+      POSTGRES_PASSWORD: cadoter_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cadoter -d cadoter"]
+      interval: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./docker/php
+    image: cadoter-php
+    container_name: cadoter-backend
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /var/www
+    environment:
+      COMPOSER_HOME: /tmp/composer
+    volumes:
+      - ./:/var/www
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: php artisan serve --host=0.0.0.0 --port=8000
+
+volumes:
+  postgres_data:

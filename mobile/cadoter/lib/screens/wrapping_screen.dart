@@ -1,91 +1,74 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
-class WrappingScreen extends StatelessWidget {
-  const WrappingScreen({super.key});
+import '../core/api.dart';
+import '../core/session.dart';
+import '../core/theme.dart';
+import '../widgets/common.dart';
+
+/// « Mobile · Choix d'emballage ». Renvoie l'emballage choisi, ou null pour « sans emballage ».
+class WrappingScreen extends StatefulWidget {
+  const WrappingScreen({super.key, this.selected});
+  final Wrapping? selected;
+
+  @override
+  State<WrappingScreen> createState() => _WrappingScreenState();
+}
+
+class _WrappingScreenState extends State<WrappingScreen> {
+  late int? _id = widget.selected?.id;
 
   @override
   Widget build(BuildContext context) {
+    final wraps = SessionScope.of(context).meta.wrappings;
+    final chosen = wraps.where((w) => w.id == _id).firstOrNull;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Choix d\'emballage', style: TextStyle(color: Color(0xFF30232C), fontSize: 14)),
-        centerTitle: false, elevation: 0, backgroundColor: Colors.white,
-        automaticallyImplyLeading: true, leading: const BackButton(),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Choix d\'emballage', style: const TextStyle(fontSize: 33, fontFamily: 'DM Serif Display', color: Color(0xFF30232C), height: 1.35)),
-            const SizedBox(height: 22),
-            Text('Sélectionnez l\'emballage de votre cadeau, ou choisissez « sans emballage ».',
-                style: const TextStyle(fontSize: 14, color: Color(0xFF786C74), height: 1.35)),
-            const SizedBox(height: 30),
-            _model('Rosé signature', true),
-            const SizedBox(height: 20),
-            _model('Naturel délicat', false),
-            const SizedBox(height: 20),
-            _model('Ciel de douceur', false),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.magenta, foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+      appBar: const TopBar('La touche finale'),
+      bottomNavigationBar: const AppBottomNav(current: 1),
+      body: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
+        Text('Le plaisir commence avant d’ouvrir.', style: T.serif(32)),
+        const SizedBox(height: 18),
+        Text('Choisissez un modèle pour votre cadeau. Visuels d’emballages présentés à titre d’exemple.',
+            style: T.sans(14, color: AppColors.gray)),
+        const SizedBox(height: 22),
+        for (final w in wraps)
+          GestureDetector(
+            onTap: () => setState(() => _id = w.id),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _id == w.id ? AppColors.magenta : AppColors.border, width: _id == w.id ? 2 : 1),
+              ),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                NetImage(w.imageUrl, width: 108, height: 124, radius: 12),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const SizedBox(height: 6),
+                    Text(w.name, style: T.sans(14, weight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Text(w.detail, style: T.sans(12, color: AppColors.gray)),
+                    const SizedBox(height: 12),
+                    Icon(_id == w.id ? Icons.check_circle_outline : Icons.radio_button_unchecked,
+                        color: _id == w.id ? AppColors.magenta : AppColors.gray),
+                  ]),
                 ),
-                child: const Text('Confirmer l\'emballage', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              ),
+              ]),
             ),
-            const SizedBox(height: 10),
-            Text('Sans emballage également possible.', style: const TextStyle(fontSize: 12, color: Color(0xFF786C74)), textAlign: TextAlign.center),
-          ],
+          ),
+        if (wraps.isEmpty) Text('Aucun emballage disponible pour le moment.', style: T.sans(13, color: AppColors.gray)),
+        const SizedBox(height: 4),
+        PrimaryButton(chosen != null ? 'Choisir ${chosen.name}' : 'Continuer',
+            onPressed: () => Navigator.pop(context, chosen)),
+        const SizedBox(height: 20),
+        Center(
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context, null),
+            child: Text('Continuer sans emballage', style: T.sans(13, color: AppColors.gray)),
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _model(String name, bool selected) {
-    return Container(
-      height: 149,
-      decoration: BoxDecoration(
-        border: Border.all(color: selected ? AppColors.magenta : const Color(0xFFE9E1E5), width: 2),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Container(width: 108, height: 125, color: AppColors.cream),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF30232C))),
-                  const SizedBox(height: 8),
-                  Text(selected ? 'Papier mat rose poudré, ruban satin magenta.'
-                      : 'Papier kraft naturel, ruban coton crème.',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF786C74), height: 1.35)),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Container(width: 22, height: 22, decoration: BoxDecoration(
-                        color: selected ? AppColors.magenta : Colors.white,
-                        border: Border.all(color: selected ? AppColors.magenta : const Color(0xFF786C74), width: 1.7),
-                        shape: BoxShape.circle,
-                      )),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      ]),
     );
   }
 }

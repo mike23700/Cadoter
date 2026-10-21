@@ -1,122 +1,120 @@
-import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../core/api.dart';
+import '../core/session.dart';
+import '../core/theme.dart';
+import '../widgets/common.dart';
+
+/// « Mobile · Création de liste ». Avec [list], modifie une liste existante. Renvoie la liste enregistrée.
 class CreateListScreen extends StatefulWidget {
-  const CreateListScreen({super.key});
+  const CreateListScreen({super.key, this.list});
+  final GiftList? list;
 
   @override
   State<CreateListScreen> createState() => _CreateListScreenState();
 }
 
 class _CreateListScreenState extends State<CreateListScreen> {
-  final List<String> _occasions = ['Anniversaire', 'Mariage', 'Naissance', 'Dot', 'Autre', 'Soutien'];
-  String? _selected;
+  final _form = GlobalKey<FormState>();
+  late final _title = TextEditingController(text: widget.list?.title);
+  late final _desc = TextEditingController(text: widget.list?.description);
+  late final _code = TextEditingController(text: widget.list?.accessCode);
+  late String _occasion = widget.list?.occasion ?? 'Anniversaire';
+  File? _image;
+  bool _busy = false;
+  ApiException? _error;
+
+  bool get _editing => widget.list != null;
+
+  Future<void> _pick() async {
+    final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    if (x == null) return;
+    final f = File(x.path);
+    if (await f.length() > 5 * 1024 * 1024) {
+      if (mounted) toast(context, 'L’image ne doit pas dépasser 5 Mo.');
+      return;
+    }
+    setState(() => _image = f);
+  }
+
+  Future<void> _submit() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final fields = {
+        'title': _title.text.trim(),
+        'description': _desc.text.trim(),
+        'occasion': _occasion,
+        if (_editing) 'access_code': _code.text.trim(),
+      };
+      final res = await Api.instance.multipart(_editing ? '/lists/${widget.list!.id}/update' : '/lists', fields, file: _image);
+      if (mounted) Navigator.pop(context, GiftList.fromJson(res));
+    } on ApiException catch (e) {
+      setState(() => _error = e);
+      if (mounted) toast(context, e.errors.values.firstOrNull?.first ?? e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final occasions = SessionScope.of(context).meta.occasions;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Créer une liste', style: TextStyle(color: Color(0xFF30232C), fontSize: 14)),
-        centerTitle: false, elevation: 0, backgroundColor: Colors.white,
-        automaticallyImplyLeading: true, leading: const BackButton(),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Anniversaire Aïcha', style: const TextStyle(fontSize: 32, fontFamily: 'DM Serif Display', color: Color(0xFF30232C), height: 1.35)),
-            const SizedBox(height: 22),
-            Text('Créez une liste pour célébrer un moment spécial. Ajoutez des cadeaux et partagez le lien avec vos proches.',
-                style: const TextStyle(fontSize: 14, color: Color(0xFF786C74), height: 1.35)),
-            const SizedBox(height: 22),
-            // Titre
-            _field('Titre de la liste', 'Nom de la liste'),
-            const SizedBox(height: 22),
-            // Description
-            _field('Description', 'Parlez de l\'événement...', maxLines: 4),
-            const SizedBox(height: 22),
-            // Image de couverture
-            Text('Image de couverture', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF30232C))),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity, height: 86,
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFFE9E1E5)),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(width: 22, height: 22, decoration: BoxDecoration(
-                    color: AppColors.magenta.withOpacity(0.1),
-                    border: Border.all(color: AppColors.magenta, width: 1.7),
-                    shape: BoxShape.circle,
-                  )),
-                  const SizedBox(height: 12),
-                  Text('Importer une image', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.magenta)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('JPG/PNG, 5 Mo max', style: const TextStyle(fontSize: 11, color: Color(0xFF786C74))),
-            const SizedBox(height: 22),
-            // Choix d'occasion
-            Text('Choix d\'occasion', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF30232C))),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _occasions.map((o) => _pill(o, _selected == o, () => setState(() => _selected = o))).toList(),
-            ),
-            const SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.magenta, foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
-                ),
-                child: const Text('Créer la liste', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _field(String label, String hint, {int maxLines = 1}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF30232C))),
-        const SizedBox(height: 7),
-        TextField(
-          maxLines: maxLines,
-          decoration: InputDecoration(
-            hintText: hint, hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF786C74)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE9E1E5))),
-            filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.all(13),
+      appBar: TopBar(_editing ? 'Modifier ma liste' : 'Nouvelle liste'),
+      bottomNavigationBar: const AppBottomNav(current: 2),
+      body: Form(
+        key: _form,
+        child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
+          Text('Une liste à votre image.', style: T.serif(32)),
+          const SizedBox(height: 16),
+          Text('Rassemblez vos envies. Vos proches choisiront ce qui leur fait plaisir.', style: T.sans(14, color: AppColors.gray)),
+          const SizedBox(height: 26),
+          LabeledField(
+            label: 'Titre de la liste *', controller: _title, hint: 'Mon anniversaire', errorText: _error?.field('title'),
+            validator: (v) => (v ?? '').trim().isEmpty ? 'Donnez un titre à votre liste.' : null,
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _pill(String label, bool selected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.magenta : Colors.white,
-          border: Border.all(color: selected ? AppColors.magenta : const Color(0xFFE9E1E5), width: 1),
-          borderRadius: BorderRadius.circular(100),
-        ),
-        child: Text(label, style: TextStyle(fontSize: 12, color: selected ? Colors.white : const Color(0xFF30232C))),
+          LabeledField(label: 'Description', controller: _desc, maxLines: 3, hint: 'Quelques envies pour mes 30 ans…'),
+          const FieldLabel('Image de la liste'),
+          GestureDetector(
+            onTap: _pick,
+            child: Container(
+              padding: const EdgeInsets.all(22),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _image != null
+                  ? ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.file(_image!, height: 140, width: double.infinity, fit: BoxFit.cover))
+                  : Row(children: [
+                      const Icon(Icons.add_photo_alternate_outlined, color: AppColors.magenta),
+                      const SizedBox(width: 14),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(_editing ? 'Changer l’image' : 'Ajouter une image', style: T.sans(14, weight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text('JPG ou PNG · 5 Mo maximum', style: T.sans(11, color: AppColors.gray)),
+                      ]),
+                    ]),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const FieldLabel('Occasion *'),
+          Wrap(spacing: 8, runSpacing: 10, children: [
+            for (final o in occasions) Pill(o, selected: _occasion == o, onTap: () => setState(() => _occasion = o)),
+          ]),
+          const SizedBox(height: 18),
+          Text('Pour un deuil, une présentation sobre et un message de soutien seront privilégiés. * Champ obligatoire.',
+              style: T.sans(11, color: AppColors.gray)),
+          if (_editing) ...[
+            const SizedBox(height: 22),
+            LabeledField(label: 'Code d’accès (facultatif)', controller: _code, hint: 'Laisser vide pour un lien public'),
+          ],
+          const SizedBox(height: 26),
+          PrimaryButton(_editing ? 'Enregistrer' : 'Créer ma liste', loading: _busy, onPressed: _submit),
+        ]),
       ),
     );
   }

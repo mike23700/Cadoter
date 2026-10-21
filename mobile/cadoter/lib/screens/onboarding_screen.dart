@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
 
+import '../core/session.dart';
+import '../core/theme.dart';
+import '../widgets/common.dart';
+import 'auth_screens.dart';
+import 'shell.dart';
+
+/// « Mobile · Présentation — Offrir / Listes / Assistante »
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -9,93 +15,85 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  int _page = 0;
-  final List<Map<String, String>> _pages = const [
-    {
-      'title': 'Offrir',
-      'body': "Créez une liste de cadeaux pour un événement : anniversaire, mariage, naissance, dot ou soutien. Partagez le lien avec vos proches.",
-      'image': 'gift',
-    },
-    {
-      'title': 'Listes',
-      'body': 'Ajoutez des cadeaux depuis le catalogue ou n\'importe quel site marchand. Chaque cadeau est réservé par une seule personne.',
-      'image': 'list',
-    },
-    {
-      'title': 'Assistante',
-      'body': 'Besoin d\'idées ? Décrivez la personne et le budget, l\'assistante IA vous suggère des cadeaux adaptés.',
-      'image': 'sparkles',
-    },
+  final _pages = PageController();
+  int _i = 0;
+
+  static const _slides = [
+    ('assets/images/onboarding-offrir.jpg', 'À chacun sa belle attention.',
+        'Trouvez un cadeau qui raconte votre lien, pour les petits bonheurs et les grands moments.', 'Continuer'),
+    ('assets/images/the.jpg', 'Vos envies, à partager.',
+        'Créez votre liste, ajoutez des produits de tous vos sites favoris, sans limite, puis partagez le lien à vos proches.', 'Continuer'),
+    ('assets/images/emballage-rose.jpg', 'Un peu d’aide.\nBeaucoup d’idées.',
+        'Parlez-nous de la personne. Notre assistante IA vous inspire, jusqu’au choix de l’emballage.', 'C’est parti !'),
   ];
 
-  @override
-  Widget build(BuildContext context) {
-    final p = _pages[_page];
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const BackButton(),
-                  Container(width: 22, height: 22, decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFF30232C), width: 1.7),
-                    shape: BoxShape.circle,
-                  )),
-                ],
-              ),
-              const SizedBox(height: 22),
-              Expanded(
-                child: Column(
-                  children: [
-                    Container(width: 354, height: 330, color: AppColors.cream),
-                    const SizedBox(height: 28),
-                    Row(
-                      children: List.generate(3, (i) => Container(
-                        width: i == _page ? 28 : 7, height: 7,
-                        margin: const EdgeInsets.only(right: 7),
-                        decoration: BoxDecoration(
-                          color: i == _page ? AppColors.magenta : const Color(0xFFE9E1E5),
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                      )),
-                    ),
-                    const SizedBox(height: 34),
-                    Text(p['title'] ?? '', style: const TextStyle(fontSize: 34, fontFamily: 'DM Serif Display', color: Color(0xFF30232C), height: 1.35)),
-                    const SizedBox(height: 20),
-                    Text(p['body'] ?? '', style: const TextStyle(fontSize: 15, color: Color(0xFF786C74), height: 1.35), textAlign: TextAlign.center),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _page == 2
-                      ? () => Navigator.pushReplacementNamed(context, '/language')
-                      : () => setState(() => _page++),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Continuer', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.arrow_right, size: 18, color: Colors.white),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () => Navigator.pushReplacementNamed(context, '/language'),
-                child: const Text('Passer', style: TextStyle(fontSize: 12, color: Color(0xFF786C74))),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  Future<void> _finish({bool login = false}) async {
+    await SessionScope.read(context).setOnboarded();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const Shell()), (_) => false);
+    if (login) Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        body: SafeArea(
+          child: Column(children: [
+            const BrandHeader(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(kGutter, 18, kGutter, 18),
+              child: Row(children: [
+                const Eyebrow('Découvrir CADOTER'),
+                const Spacer(),
+                GestureDetector(onTap: _finish, child: Text('Passer', style: T.sans(14, color: AppColors.magenta))),
+              ]),
+            ),
+            Expanded(
+              child: PageView.builder(
+                controller: _pages,
+                itemCount: _slides.length,
+                onPageChanged: (i) => setState(() => _i = i),
+                itemBuilder: (_, i) {
+                  final s = _slides[i];
+                  return ListView(padding: const EdgeInsets.symmetric(horizontal: kGutter), children: [
+                    NetImage(s.$1, aspect: 354 / 330),
+                    const SizedBox(height: 20),
+                    Row(children: [
+                      for (var d = 0; d < _slides.length; d++)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.only(right: 6),
+                          width: d == _i ? 28 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                              color: d == _i ? AppColors.magenta : AppColors.border, borderRadius: BorderRadius.circular(3)),
+                        ),
+                    ]),
+                    const SizedBox(height: 22),
+                    Text(s.$2, style: T.serif(34, height: 1.35)),
+                    const SizedBox(height: 18),
+                    Text(s.$3, style: T.sans(15, color: AppColors.gray)),
+                  ]);
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 18),
+              child: Column(children: [
+                PrimaryButton(_slides[_i].$4, icon: Icons.arrow_forward, onPressed: () {
+                  if (_i < _slides.length - 1) {
+                    _pages.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+                  } else {
+                    _finish();
+                  }
+                }),
+                const SizedBox(height: 20),
+                GestureDetector(
+                  onTap: () => _finish(login: true),
+                  child: Text('Déjà un compte ? Se connecter', style: T.sans(12, color: AppColors.gray)),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      );
 }
