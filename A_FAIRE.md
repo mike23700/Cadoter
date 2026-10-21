@@ -52,13 +52,40 @@ Ports hôte : **5433** (Postgres) et **8001** (API), car 5432/8000 sont déjà p
 
 ## 6. Lancer le projet
 
+### 6.0 Prérequis
+| Outil | Version | Vérifier |
+|-------|---------|----------|
+| Docker + Docker Compose | 24+ / v2 | `docker --version` · `docker compose version` |
+| Node.js + npm | 18+ | `node -v` |
+| Flutter | 3.38 | `flutter --version` · `flutter doctor` |
+| Émulateur Android (ou téléphone sur le même Wi-Fi) | — | `flutter devices` |
+| pgAdmin 4 (facultatif) | — | — |
+
+Pas de PHP ni de Composer en local : ils sont dans l'image Docker `cadoter-php`.
+Ports utilisés : 5433 (Postgres), 8001 (API), 5173 (web). Vérifier qu'ils sont libres : `ss -ltn | grep -E '5433|8001|5173'`.
+
 ### 6.1 Backend
+Première installation (après un `git clone`) :
+```bash
+cd backend
+cp .env.example .env                      # puis définir ADMIN_PASSWORD
+docker compose build
+docker compose run --rm backend composer install
+docker compose run --rm backend php artisan key:generate
+```
+
+Démarrage :
 ```bash
 cd backend
 docker compose up -d                      # Postgres (5433) + API (http://localhost:8001)
-docker compose exec backend php artisan migrate:fresh --seed --force
+docker compose exec backend php artisan migrate:fresh --seed --force   # ⚠ efface les données
 docker compose exec backend php artisan storage:link
+curl http://localhost:8001/api/gifts      # doit renvoyer les cadeaux en JSON
 ```
+
+Accès à la base avec pgAdmin 4 (« Register › Server ») : hôte `localhost`, port `5433`,
+base `cadoter`, utilisateur `cadoter`, mot de passe `cadoter_pass`.
+Ce n'est **pas** le Postgres local (5432) ni l'utilisateur `postgres`.
 Comptes de démo : `admin@cadoter.com` / `Admin12345` (admin) · `aicha@exemple.com` / `password123`.
 Pour changer le mot de passe admin : `ADMIN_EMAIL` / `ADMIN_PASSWORD` dans `backend/.env`, puis relancer le seeder.
 
@@ -85,6 +112,8 @@ cd mobile/cadoter
 flutter run                                           # émulateur Android : API sur 10.0.2.2:8001
 flutter run --dart-define=API_URL=http://192.168.x.x:8001/api   # téléphone physique (IP du PC)
 ```
+Trouver l'IP du PC : `hostname -I`. Le téléphone doit être sur le même réseau Wi-Fi.
+En version web (`flutter run -d chrome`), les photos ne s'affichent pas (restriction CORS du serveur de dev) : tester sur émulateur ou téléphone.
 
 ### 6.4 Base de données — tables (créées)
 | Table | Colonnes principales |
@@ -152,6 +181,34 @@ flutter run --dart-define=API_URL=http://192.168.x.x:8001/api   # téléphone ph
 - Stockage du token Sanctum (localStorage web / SecureStorage Flutter).
 - Gestion des réservations en temps réel (polling ou WebSocket optionnel).
 - Upload d'images (stockage local ou S3) pour listes et cadeaux.
+
+## 7. Procédure de test (bout en bout)
+Prérequis : backend démarré et base réinitialisée (§6.1), web lancé (§6.2), app mobile lancée (§6.3).
+
+| # | Où | Action | Résultat attendu |
+|---|----|--------|------------------|
+| 1 | Web `/admin/connexion` | Se connecter `admin@cadoter.com` / `Admin12345` | Tableau de bord affiché |
+| 2 | Web `/admin/cadeaux` | « Nouveau cadeau » : nom, prix 15000, ville Bouaké, photo, occasion Naissance, cocher « À la une » | Le cadeau apparaît dans le tableau |
+| 3 | pgAdmin | Table `gifts` | Nouvelle ligne avec `image_path` rempli |
+| 4 | Web `/` puis `/cadeaux` | Recharger | Le cadeau est sur l'accueil ; filtre « Ville = Bouaké » ne montre que lui |
+| 5 | Mobile, onglet Accueil | Tirer pour rafraîchir | Le cadeau apparaît aussi |
+| 6 | Web `/admin/cadeaux` | Désactiver « En ligne » | Il disparaît du site et du mobile ; le réactiver |
+| 7 | Web `/inscription` | Créer un compte « Fatou » | Redirection vers Mes listes |
+| 8 | Mobile, onglet Compte | Se connecter `aicha@exemple.com` / `password123` | Nom et initiales affichés |
+| 9 | Mobile, Mes listes | « Créer une liste » (titre, occasion, image) | Liste créée, écran « Ma liste » |
+| 10 | Mobile, Ma liste | Coller un lien produit https://… → « Ajouter ce lien » | Produit ajouté (nom/image si la page en fournit) |
+| 11 | Mobile, Fiche cadeau | « Ajouter à ma liste » | Message de confirmation |
+| 12 | Mobile, Ma liste | « Copier le lien » | Lien `cadoter.com/l/<code>` copié |
+| 13 | Web (compte Fatou ou navigation privée) | Ouvrir `http://localhost:5173/l/<code>` → « Je réserve ce cadeau » | Badge « Réservé · indisponible » |
+| 14 | Autre navigateur | Réserver le même cadeau | Refusé : « Un proche a déjà choisi ce cadeau » |
+| 15 | Mobile, Ma liste | Tirer pour rafraîchir | « Réservé par Fatou » |
+| 16 | Web, liste partagée | « ou l'offrir directement » → formulaire → Commander | Référence `CMD-…` affichée |
+| 17 | Web `/admin/commandes` | Passer la commande en « Payée » | Statut mis à jour ; l'élément de liste devient « Réservé » |
+| 18 | Web `/personnalise` | Envoyer une demande avec un emballage | Visible dans `/admin/demandes` |
+| 19 | Web `/assistante` et mobile, onglet Assistante | Budget 40 000, « Elle aime le thé » | « Le rituel du thé » proposé en premier |
+| 20 | Web | Ma liste → « Ajouter un code d'accès », puis ouvrir le lien partagé | Code demandé ; mauvais code refusé |
+
+Remise à zéro après les tests : `docker compose exec backend php artisan migrate:fresh --seed --force`.
 
 ## 8. Priorités d'implémentation
 1. ~~Créer le projet Laravel + fichiers Docker~~ ✅
