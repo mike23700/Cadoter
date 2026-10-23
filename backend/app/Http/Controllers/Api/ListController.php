@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GiftList;
 use App\Models\ListItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class ListController extends Controller
@@ -53,10 +56,12 @@ class ListController extends Controller
         return response()->json($this->present($list->load('items.gift.partner:id,shop_name')));
     }
 
-    public function destroy(Request $request, GiftList $list)
+    public function destroy(Request $request, GiftList $list): Response
     {
         $this->authorizeOwner($request, $list);
+        $images = $list->items()->whereNotNull('external_image_path')->pluck('external_image_path')->all();
         $list->delete();
+        Storage::disk('public')->delete($images);
 
         return response()->noContent();
     }
@@ -84,6 +89,29 @@ class ListController extends Controller
                 'external_price' => $data['price'] ?? $preview['price'],
             ]);
         }
+
+        return response()->json($item->load('gift')->toPublicArray(true), 201);
+    }
+
+    /** Ajouter manuellement un cadeau avec une photo. */
+    public function addManualItem(Request $request, GiftList $list): JsonResponse
+    {
+        $this->authorizeOwner($request, $list);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:190'],
+            'description' => ['required', 'string', 'max:2000'],
+            'price' => ['required', 'integer', 'min:0'],
+            'seller_name' => ['required', 'string', 'max:190'],
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+        ]);
+
+        $item = $list->items()->create([
+            'external_name' => $data['name'],
+            'external_description' => $data['description'],
+            'external_price' => $data['price'],
+            'external_seller_name' => $data['seller_name'],
+            'external_image_path' => $request->file('image')->store('list-items', 'public'),
+        ]);
 
         return response()->json($item->load('gift')->toPublicArray(true), 201);
     }

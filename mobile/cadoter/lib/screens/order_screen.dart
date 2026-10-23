@@ -96,7 +96,13 @@ class _OrderScreenState extends State<OrderScreen> {
           LabeledField(label: 'Nom *', controller: _name, validator: _req, errorText: _error?.field('customer_name')),
           LabeledField(label: 'Téléphone Mobile Money *', controller: _phone, keyboard: TextInputType.phone, validator: _req, hint: '+225 07 00 00 00 00', errorText: _error?.field('customer_phone')),
           LabeledField(label: 'Ville de livraison', controller: _city),
-          LabeledField(label: 'Adresse / quartier', controller: _address, hint: 'Cocody, Riviera 2'),
+          LabeledField(
+            label: 'Lieu de livraison *',
+            controller: _address,
+            hint: 'Quartier, rue et point de repère',
+            validator: _req,
+            errorText: _error?.field('delivery_address'),
+          ),
           LabeledField(label: 'Petit mot (facultatif)', controller: _message, maxLines: 3, hint: 'Joyeux anniversaire !'),
           const FieldLabel('Emballage'),
           GestureDetector(

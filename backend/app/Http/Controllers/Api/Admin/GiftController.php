@@ -30,8 +30,9 @@ class GiftController extends Controller
         if (! $request->user()->isAdmin()) {
             $gift->is_featured = false;
         }
-        $gift->image_path = $request->file('image')?->store('gifts', 'public');
+        $oldImagePaths = $this->replaceImages($request, $gift);
         $gift->save();
+        Storage::disk('public')->delete($oldImagePaths);
 
         return response()->json($gift->load('partner:id,shop_name'), 201);
     }
@@ -41,14 +42,9 @@ class GiftController extends Controller
     {
         $this->authorizeGift($request, $gift);
         $gift->fill($this->validated($request, false));
-        if ($request->hasFile('image')) {
-            $old = $gift->image_path;
-            $gift->image_path = $request->file('image')->store('gifts', 'public');
-            if ($old) {
-                Storage::disk('public')->delete($old);
-            }
-        }
+        $oldImagePaths = $this->replaceImages($request, $gift);
         $gift->save();
+        Storage::disk('public')->delete($oldImagePaths);
 
         return response()->json($gift->load('partner:id,shop_name'));
     }
@@ -56,9 +52,7 @@ class GiftController extends Controller
     public function destroy(Request $request, Gift $gift)
     {
         $this->authorizeGift($request, $gift);
-        if ($gift->image_path) {
-            Storage::disk('public')->delete($gift->image_path);
-        }
+        Storage::disk('public')->delete($this->storedImagePaths($gift));
         $gift->delete();
 
         return response()->noContent();
@@ -90,16 +84,56 @@ class GiftController extends Controller
             'occasions.*' => ['string', 'max:60'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
-            'image' => [$creating ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'images' => [$creating ? 'required_without:image' : 'sometimes', 'array', 'min:1', 'max:4'],
+            'images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image' => [$creating ? 'required_without:images' : 'sometimes', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ];
         if ($request->user()->isAdmin()) {
             $rules['is_featured'] = ['nullable', 'boolean'];
         }
 
-        $data = $request->validate($rules, ['image.required' => __('Ajoutez une photo du cadeau.')]);
-        unset($data['image']);
+        $data = $request->validate($rules, [
+            'image.required_without' => __('Ajoutez au moins une photo du cadeau.'),
+            'images.required_without' => __('Ajoutez au moins une photo du cadeau.'),
+            'images.min' => __('Ajoutez au moins une photo du cadeau.'),
+            'images.max' => __('Un cadeau peut avoir au maximum 4 photos.'),
+        ]);
+        unset($data['image'], $data['images']);
 
         return $data;
+    }
+
+    /** Replace the gallery when new photos are provided and return the old file paths. */
+    private function replaceImages(Request $request, Gift $gift): array
+    {
+        if (! $request->hasFile('images') && ! $request->hasFile('image')) {
+            return [];
+        }
+
+        $oldPaths = $this->storedImagePaths($gift);
+        $files = $request->file('images');
+        if (! is_array($files)) {
+            $files = [$request->file('image')];
+        }
+
+        $paths = collect($files)
+            ->filter()
+            ->map(fn ($file) => $file->store('gifts', 'public'))
+            ->values()
+            ->all();
+
+        $gift->image_paths = $paths;
+        $gift->image_path = $paths[0] ?? null;
+
+        return $oldPaths;
+    }
+
+    private function storedImagePaths(Gift $gift): array
+    {
+        return array_values(array_unique(array_filter([
+            ...($gift->image_paths ?? []),
+            $gift->image_path,
+        ])));
     }
 
     private function authorizeGift(Request $request, Gift $gift): void

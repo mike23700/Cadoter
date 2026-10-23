@@ -14,13 +14,14 @@ class Gift extends Model
         'category', 'for_who', 'occasions', 'image_path', 'stock', 'is_active', 'is_featured',
     ];
 
-    protected $appends = ['image_url', 'available', 'seller_name'];
+    protected $appends = ['image_url', 'image_urls', 'available', 'seller_name'];
 
     protected function casts(): array
     {
         return [
             'for_who' => 'array',
             'occasions' => 'array',
+            'image_paths' => 'array',
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'price' => 'integer',
@@ -46,6 +47,18 @@ class Gift extends Model
     public function getImageUrlAttribute(): ?string
     {
         return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
+    }
+
+    public function getImageUrlsAttribute(): array
+    {
+        $paths = $this->image_paths ?: ($this->image_path ? [$this->image_path] : []);
+
+        return collect($paths)
+            ->filter()
+            ->unique()
+            ->map(fn (string $path) => Storage::disk('public')->url($path))
+            ->values()
+            ->all();
     }
 
     public function getAvailableAttribute(): bool

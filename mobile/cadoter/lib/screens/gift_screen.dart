@@ -24,6 +24,7 @@ class _GiftScreenState extends State<GiftScreen> {
   int? _listId;
   Wrapping? _wrap;
   bool _busy = false;
+  int _photoIndex = 0;
 
   Future<Gift> _load() async {
     final gift = Gift.fromJson(await Api.instance.get('/gifts/${Uri.encodeComponent(widget.slug)}'));
@@ -71,8 +72,38 @@ class _GiftScreenState extends State<GiftScreen> {
         load: _load,
         builder: (context, gift, _) => StatefulBuilder(builder: (context, setLocal) {
           final fav = session.favorites.contains(gift.id);
+          final photos = gift.imageUrls.isNotEmpty ? gift.imageUrls : [gift.imageUrl].whereType<String>().toList();
           return ListView(padding: const EdgeInsets.fromLTRB(kGutter, 8, kGutter, 28), children: [
-            NetImage(gift.imageUrl, aspect: 354 / 300),
+            if (photos.length > 1)
+              AspectRatio(
+                aspectRatio: 354 / 300,
+                child: PageView.builder(
+                  itemCount: photos.length,
+                  onPageChanged: (index) => setLocal(() => _photoIndex = index),
+                  itemBuilder: (_, index) => NetImage(photos[index]),
+                ),
+              )
+            else
+              NetImage(photos.isEmpty ? gift.imageUrl : photos.first, aspect: 354 / 300),
+            if (photos.length > 1) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  photos.length,
+                  (index) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    width: index == _photoIndex ? 18 : 7,
+                    height: 7,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: index == _photoIndex ? AppColors.magenta : AppColors.border,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 22),
             Align(alignment: Alignment.centerLeft, child: StatusBadge(gift.available ? 'Disponible' : 'Indisponible', ok: gift.available)),
             const SizedBox(height: 18),

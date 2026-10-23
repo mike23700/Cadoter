@@ -22,6 +22,7 @@ export type Gift = {
   for_who: string[] | null;
   occasions: string[] | null;
   image_url: string | null;
+  image_urls: string[];
   stock: number | null;
   is_active: boolean;
   is_featured: boolean;
@@ -36,6 +37,7 @@ export type ListItem = {
   gift_id: number | null;
   gift_slug: string | null;
   name: string;
+  description: string | null;
   seller_name: string | null;
   price: number | null;
   currency: string;

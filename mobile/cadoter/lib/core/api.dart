@@ -150,6 +150,7 @@ class Gift {
     this.area,
     this.sellerName = 'cadoter.com',
     this.imageUrl,
+    this.imageUrls = const [],
     required this.available,
     this.forWho = const [],
     this.occasions = const [],
@@ -164,6 +165,7 @@ class Gift {
   final String? area;
   final String sellerName;
   final String? imageUrl;
+  final List<String> imageUrls;
   final bool available;
   final List<String> forWho;
   final List<String> occasions;
@@ -181,6 +183,10 @@ class Gift {
         area: j['area'],
         sellerName: j['seller_name'] ?? 'cadoter.com',
         imageUrl: fixUrl(j['image_url']),
+        imageUrls: (j['image_urls'] as List? ?? const [])
+            .map((url) => fixUrl(url as String?))
+            .whereType<String>()
+            .toList(),
         available: j['available'] ?? true,
         forWho: List<String>.from(j['for_who'] ?? const []),
         occasions: List<String>.from(j['occasions'] ?? const []),
@@ -194,6 +200,7 @@ class ListItem {
     this.giftId,
     this.giftSlug,
     required this.name,
+    this.description,
     this.price,
     required this.currency,
     this.city,
@@ -208,6 +215,7 @@ class ListItem {
   final int? giftId;
   final String? giftSlug;
   final String name;
+  final String? description;
   final int? price;
   final String currency;
   final String? city;
@@ -225,6 +233,7 @@ class ListItem {
         giftId: j['gift_id'],
         giftSlug: j['gift_slug'],
         name: j['name'] ?? tr('Produit'),
+        description: j['description'],
         price: _int(j['price']),
         currency: j['currency'] ?? 'FCFA',
         city: j['city'],

@@ -146,12 +146,23 @@ class _SharedListScreenState extends State<SharedListScreen> {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           const SizedBox(height: 4),
                           Text(item.name, style: T.sans(14, weight: FontWeight.w600)),
+                          if (item.description != null) ...[
+                            const SizedBox(height: 6),
+                            Text(item.description!, style: T.sans(12, color: AppColors.gray)),
+                          ],
                           if (item.sellerName != null) ...[
                             const SizedBox(height: 5),
-                            Text('Vendu par ${item.sellerName}', style: T.sans(11, color: AppColors.gray)),
+                            Text(
+                              item.giftId == null && item.externalUrl == null
+                                  ? tr('Lieu / boutique : {name}', {'name': item.sellerName!})
+                                  : tr('Vendu par {name}', {'name': item.sellerName!}),
+                              style: T.sans(11, color: AppColors.gray),
+                            ),
                           ],
-                          const SizedBox(height: 8),
-                          Text(formatPrice(item.price, item.currency), style: T.sans(13, color: AppColors.magenta)),
+                          if (item.price != null) ...[
+                            const SizedBox(height: 8),
+                            Text(formatPrice(item.price, item.currency), style: T.sans(13, color: AppColors.magenta)),
+                          ],
                           const SizedBox(height: 10),
                           StatusBadge(item.isAvailable ? 'Disponible à réserver' : 'Réservé · indisponible', ok: item.isAvailable),
                         ]),

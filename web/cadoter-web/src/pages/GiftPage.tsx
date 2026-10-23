@@ -24,7 +24,7 @@ export default function GiftPage() {
   }
 
   const wrap = meta?.wrappings[0];
-  const photos = [gift.image_url, wrap?.image_url].filter(Boolean) as string[];
+  const photos = [...(gift.image_urls?.length ? gift.image_urls : [gift.image_url]), wrap?.image_url].filter(Boolean) as string[];
   const isFav = favorites.includes(gift.id);
 
   const addToList = async () => {

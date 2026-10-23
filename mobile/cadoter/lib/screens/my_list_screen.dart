@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../core/api.dart';
 import '../core/i18n.dart';
@@ -52,6 +55,191 @@ class _MyListScreenState extends State<MyListScreen> {
       if (mounted) toast(context, e.field('url') ?? e.message);
     } finally {
       if (mounted) setState(() => _adding = false);
+    }
+  }
+
+  Future<void> _chooseCatalogGift() async {
+    try {
+      final response = await Api.instance.get('/gifts?limit=100');
+      final gifts = (response as List)
+          .map((item) => Gift.fromJson(Map<String, dynamic>.from(item as Map)))
+          .where((gift) => gift.available)
+          .toList();
+      if (!mounted) return;
+      if (gifts.isEmpty) {
+        toast(context, 'Aucun cadeau disponible pour le moment.');
+        return;
+      }
+
+      final addedIds = _list?.items.map((item) => item.giftId).whereType<int>().toSet() ?? <int>{};
+      final search = TextEditingController();
+      int? addingId;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        builder: (_) => StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final query = search.text.trim().toLowerCase();
+            final visible = gifts.where((gift) => query.isEmpty || gift.name.toLowerCase().contains(query) || (gift.description?.toLowerCase().contains(query) ?? false)).toList();
+            return SizedBox(
+              height: MediaQuery.of(ctx).size.height * .82,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 12 + MediaQuery.of(ctx).viewInsets.bottom),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(tr('Choisir un cadeau'), style: T.serif(24))),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ]),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: search,
+                    decoration: InputDecoration(prefixIcon: const Icon(Icons.search), hintText: tr('Rechercher un cadeau')),
+                    onChanged: (_) => setSheetState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: visible.isEmpty
+                        ? Center(child: Text(tr('Aucun cadeau ne correspond à cette recherche.'), style: T.sans(13, color: AppColors.gray)))
+                        : ListView.separated(
+                            itemCount: visible.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, index) {
+                              final gift = visible[index];
+                              final added = addedIds.contains(gift.id);
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(vertical: 5),
+                                leading: NetImage(gift.imageUrl, width: 58, height: 58, radius: 12),
+                                title: Text(gift.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: T.sans(13, weight: FontWeight.w600)),
+                                subtitle: Text('${gift.sellerName} · ${formatPrice(gift.price, gift.currency)}', style: T.sans(11, color: AppColors.gray)),
+                                trailing: added
+                                    ? Text(tr('Déjà ajouté'), style: T.sans(11, color: AppColors.gray))
+                                    : TextButton(
+                                        onPressed: addingId != null ? null : () async {
+                                          setSheetState(() => addingId = gift.id);
+                                          try {
+                                            await Api.instance.post('/lists/${widget.listId}/items', {'gift_id': gift.id});
+                                            addedIds.add(gift.id);
+                                            await _load();
+                                            if (mounted) toast(context, 'Cadeau ajouté à votre liste.');
+                                          } on ApiException catch (e) {
+                                            if (mounted) toast(context, e.message);
+                                          } finally {
+                                            if (ctx.mounted) setSheetState(() => addingId = null);
+                                          }
+                                        },
+                                        child: Text(addingId == gift.id ? tr('Ajout…') : tr('Ajouter')),
+                                      ),
+                              );
+                            },
+                          ),
+                  ),
+                ]),
+              ),
+            );
+          },
+        ),
+      );
+      search.dispose();
+    } on ApiException catch (e) {
+      if (mounted) toast(context, e.message);
+    }
+  }
+
+  Future<void> _addManualGift() async {
+    final name = TextEditingController();
+    final description = TextEditingController();
+    final price = TextEditingController();
+    final sellerName = TextEditingController();
+    File? image;
+    String? error;
+    bool busy = false;
+
+    final added = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(tr('Ajouter un cadeau manuellement'), style: T.serif(22)),
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              TextField(controller: name, maxLength: 190, decoration: InputDecoration(labelText: tr('Nom du cadeau *'))),
+              const SizedBox(height: 12),
+              TextField(controller: description, maxLength: 2000, maxLines: 4, decoration: InputDecoration(labelText: tr('Description *'), alignLabelWithHint: true)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: price,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: InputDecoration(labelText: tr('Prix approximatif (FCFA) *')),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: sellerName,
+                maxLength: 190,
+                decoration: InputDecoration(labelText: tr('Lieu / boutique où le cadeau est commercialisé *')),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: busy ? null : () async {
+                  final picked = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+                  if (picked == null) return;
+                  if (!ctx.mounted) return;
+                  final file = File(picked.path);
+                  if (await file.length() > 5 * 1024 * 1024) {
+                    setDialogState(() => error = tr('La photo ne doit pas dépasser 5 Mo.'));
+                    return;
+                  }
+                  setDialogState(() { image = file; error = null; });
+                },
+                icon: const Icon(Icons.add_photo_alternate_outlined),
+                label: Text(image == null ? tr('Ajouter une photo') : tr('Changer la photo')),
+              ),
+              if (image != null) ...[
+                const SizedBox(height: 10),
+                ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(image!, height: 150, width: double.infinity, fit: BoxFit.cover)),
+              ],
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: T.sans(12, color: AppColors.error)),
+              ],
+            ]),
+          ),
+          actions: [
+            TextButton(onPressed: busy ? null : () => Navigator.pop(ctx, false), child: Text(tr('Annuler'))),
+            TextButton(
+              onPressed: busy ? null : () async {
+                final approximatePrice = int.tryParse(price.text.trim());
+                if (name.text.trim().isEmpty || description.text.trim().isEmpty || approximatePrice == null || sellerName.text.trim().isEmpty || image == null) {
+                  setDialogState(() => error = tr('Renseignez le nom, la description, le prix, le lieu/boutique et la photo.'));
+                  return;
+                }
+                setDialogState(() { busy = true; error = null; });
+                try {
+                  await Api.instance.multipart('/lists/${widget.listId}/items/manual', {
+                    'name': name.text.trim(),
+                    'description': description.text.trim(),
+                    'price': '$approximatePrice',
+                    'seller_name': sellerName.text.trim(),
+                  }, file: image);
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                } on ApiException catch (e) {
+                  if (ctx.mounted) setDialogState(() { error = e.errors.values.firstOrNull?.first ?? e.message; busy = false; });
+                }
+              },
+              child: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Text(tr('Ajouter')),
+            ),
+          ],
+        ),
+      ),
+    );
+    name.dispose();
+    description.dispose();
+    price.dispose();
+    sellerName.dispose();
+    if (added == true) {
+      await _load();
+      if (mounted) toast(context, 'Cadeau ajouté à votre liste.');
     }
   }
 
@@ -156,6 +344,13 @@ class _MyListScreenState extends State<MyListScreen> {
                   Expanded(child: PrimaryButton('Partager', icon: Icons.share_outlined, onPressed: _copy)),
                 ]),
                 const SizedBox(height: 26),
+                const FieldLabel('Ajouter un cadeau à votre liste'),
+                Row(children: [
+                  Expanded(child: SecondaryButton('Choisir dans le catalogue', onPressed: _chooseCatalogGift)),
+                  const SizedBox(width: 12),
+                  Expanded(child: PrimaryButton('Ajouter manuellement', onPressed: _addManualGift)),
+                ]),
+                const SizedBox(height: 24),
                 const FieldLabel('Ajouter depuis un site marchand'),
                 TextField(
                   controller: _url,
@@ -188,10 +383,21 @@ class _MyListScreenState extends State<MyListScreen> {
                           Text(item.name, style: T.sans(14, weight: FontWeight.w600)),
                           if (item.sellerName != null) ...[
                             const SizedBox(height: 5),
-                            Text('Vendu par ${item.sellerName}', style: T.sans(11, color: AppColors.gray)),
+                            Text(
+                              item.giftId == null && item.externalUrl == null
+                                  ? tr('Lieu / boutique : {name}', {'name': item.sellerName!})
+                                  : tr('Vendu par {name}', {'name': item.sellerName!}),
+                              style: T.sans(11, color: AppColors.gray),
+                            ),
                           ],
-                          const SizedBox(height: 6),
-                          Text(formatPrice(item.price, item.currency), style: T.sans(12, color: AppColors.magenta)),
+                          if (item.description != null) ...[
+                            const SizedBox(height: 6),
+                            Text(item.description!, style: T.sans(12, color: AppColors.gray)),
+                          ],
+                          if (item.price != null) ...[
+                            const SizedBox(height: 6),
+                            Text(formatPrice(item.price, item.currency), style: T.sans(12, color: AppColors.magenta)),
+                          ],
                           const SizedBox(height: 8),
                           StatusBadge(item.status == 'Réservé' ? tr('Réservé par {name}', {'name': item.reservedBy ?? tr('un proche')}) : item.status, ok: item.isAvailable),
                         ]),

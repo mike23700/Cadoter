@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ApiError, formatDate, formatPrice, GiftList, ItemStatus, ListItem } from "../api";
+import { api, ApiError, formatDate, formatPrice, Gift, GiftList, ItemStatus, ListItem } from "../api";
 import { Badge, Breadcrumb, ErrorBox, Field, fieldError, IllustrativeNote, Loading, Modal, Photo } from "../components";
 import { Icon } from "../icons";
 import { t, tn } from "../i18n";
@@ -106,6 +106,8 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
   const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [choosingGift, setChoosingGift] = useState(false);
+  const [addingManualGift, setAddingManualGift] = useState(false);
 
   const addLink = async (e: FormEvent) => {
     e.preventDefault();
@@ -149,14 +151,19 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
       </div>
 
       <form className="panel" onSubmit={addLink} style={{ marginBottom: 28 }}>
-        <h3 style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 18, marginBottom: 16 }}>{t("Un coup de cœur sur un autre site ?")}</h3>
+        <h3 style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 18, marginBottom: 16 }}>{t("Ajouter un cadeau à votre liste")}</h3>
+        <div className="btn-row" style={{ marginBottom: 24 }}>
+          <button type="button" className="btn btn-outline" onClick={() => setChoosingGift(true)}>{t("Choisir dans le catalogue")}</button>
+          <button type="button" className="btn btn-primary" onClick={() => setAddingManualGift(true)}>{t("Ajouter manuellement")}</button>
+        </div>
+        <h3 style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 16, marginBottom: 16 }}>{t("Un coup de cœur sur un autre site ?")}</h3>
         <Field label={t("Lien du produit")}>
           <div className="link-form">
             <input className="input" required placeholder={t("https://boutique.exemple/produit")} value={url} onChange={e => setUrl(e.target.value)} />
             <button className="btn btn-primary" disabled={busy}>{busy ? t("Ajout…") : t("Ajouter ce lien")}</button>
           </div>
         </Field>
-        <p className="note" style={{ marginTop: 12 }}>{t("Ajoutez des produits de tous vos sites favoris, sans limitation. Ou")} <Link to="/cadeaux" className="price">{t("choisissez dans le catalogue")}</Link>.</p>
+        <p className="note" style={{ marginTop: 12 }}>{t("Ajoutez des produits de tous vos sites favoris, sans limitation.")}</p>
       </form>
 
       <IllustrativeNote />
@@ -170,8 +177,9 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
           {item.image_url ? <img src={item.image_url} alt="" /> : <div className="photo-empty thumb"><Icon name="gift" /></div>}
           <div>
             <h4>{item.gift_slug ? <Link to={`/cadeaux/${item.gift_slug}`}>{item.name}</Link> : item.external_url ? <a href={item.external_url} target="_blank" rel="noreferrer noopener">{item.name}</a> : item.name}</h4>
-            <p>{[item.city, item.area, formatPrice(item.price, item.currency)].filter(Boolean).join(" · ")}</p>
-            {item.seller_name && <p className="note">Vendu par {item.seller_name}</p>}
+            <p>{[item.city, item.area, item.price == null ? null : formatPrice(item.price, item.currency)].filter(Boolean).join(" · ")}</p>
+            {item.description && <p className="note" style={{ marginTop: 6 }}>{item.description}</p>}
+            {item.seller_name && <p className="note">{item.gift_id == null && !item.external_url ? t("Lieu / boutique : {name}", { name: item.seller_name }) : t("Vendu par {name}", { name: item.seller_name })}</p>}
             {item.reserved_by_name && <p className="note">{t("Réservé par {name}", { name: item.reserved_by_name })}</p>}
           </div>
           <Badge status={item.status} />
@@ -201,7 +209,145 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
       </div>
 
       {editing && <EditList list={list} onClose={() => setEditing(false)} onSaved={l => { onChange(l); setEditing(false); notify(t("Liste mise à jour.")); }} onDeleted={onDeleted} />}
+      {choosingGift && <GiftPicker list={list} onClose={() => setChoosingGift(false)} refresh={refresh} />}
+      {addingManualGift && <ManualGiftForm list={list} onClose={() => setAddingManualGift(false)} refresh={refresh} />}
     </section>
+  );
+}
+
+function GiftPicker({ list, onClose, refresh }: { list: GiftList; onClose: () => void; refresh: () => Promise<void> }) {
+  const { notify } = useStore();
+  const [gifts, setGifts] = useState<Gift[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<ApiError | Error | null>(null);
+  const [addingId, setAddingId] = useState<number | null>(null);
+  const [addError, setAddError] = useState<ApiError | Error | null>(null);
+  const addedIds = new Set(list.items.map(item => item.gift_id).filter((id): id is number => id != null));
+
+  useEffect(() => {
+    api<Gift[]>("/gifts?limit=100")
+      .then(items => setGifts(items.filter(gift => gift.available)))
+      .catch(e => setError(e instanceof Error ? e : new Error(String(e))))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleGifts = gifts.filter(gift => !normalizedQuery || [gift.name, gift.description, gift.seller_name]
+    .some(value => value?.toLocaleLowerCase().includes(normalizedQuery)));
+
+  const add = async (gift: Gift) => {
+    setAddingId(gift.id);
+    setAddError(null);
+    try {
+      await api(`/lists/${list.id}/items`, { body: { gift_id: gift.id } });
+      await refresh();
+      notify(t("Cadeau ajouté à votre liste."));
+    } catch (e) {
+      setAddError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setAddingId(null);
+    }
+  };
+
+  return (
+    <Modal title={t("Choisir un cadeau")} onClose={() => { if (addingId === null) onClose(); }}>
+      <Field label={t("Rechercher un cadeau")}>
+        <input className="input" autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={t("Nom du cadeau")} />
+      </Field>
+      <ErrorBox error={addError} />
+      {loading ? <Loading /> : error ? <ErrorBox error={error} /> : visibleGifts.length === 0
+        ? <div className="empty">{gifts.length ? t("Aucun cadeau ne correspond à cette recherche.") : t("Aucun cadeau disponible pour le moment.")}</div>
+        : <div className="gift-picker-list">
+          {visibleGifts.map(gift => {
+            const added = addedIds.has(gift.id);
+            return <div className="gift-picker-row" key={gift.id}>
+              <Photo src={gift.image_url} alt={gift.name} />
+              <div className="gift-picker-info">
+                <b>{gift.name}</b>
+                <span>{gift.seller_name} · {formatPrice(gift.price, gift.currency)}</span>
+              </div>
+              <button className={`btn ${added ? "btn-outline" : "btn-primary"}`} disabled={added || addingId !== null} onClick={() => add(gift)}>
+                {added ? t("Déjà ajouté") : addingId === gift.id ? t("Ajout…") : t("Ajouter")}
+              </button>
+            </div>;
+          })}
+        </div>}
+    </Modal>
+  );
+}
+
+function ManualGiftForm({ list, onClose, refresh }: { list: GiftList; onClose: () => void; refresh: () => Promise<void> }) {
+  const { notify } = useStore();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [sellerName, setSellerName] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!image) { setPreview(null); return; }
+    const url = URL.createObjectURL(image);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [image]);
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!image) {
+      setError(new ApiError(t("Ajoutez une photo du cadeau."), 422, { image: [t("Ajoutez une photo du cadeau.")] }));
+      return;
+    }
+    if (image.size > 5 * 1024 * 1024) {
+      setError(new ApiError(t("L'image ne doit pas dépasser 5 Mo."), 422, { image: [t("L'image ne doit pas dépasser 5 Mo.")] }));
+      return;
+    }
+    const body = new FormData();
+    body.append("name", name.trim());
+    body.append("description", description.trim());
+    body.append("price", price);
+    body.append("seller_name", sellerName.trim());
+    body.append("image", image);
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/lists/${list.id}/items/manual`, { body });
+      await refresh();
+      notify(t("Cadeau ajouté à votre liste."));
+      onClose();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={t("Ajouter un cadeau manuellement")} onClose={() => { if (!busy) onClose(); }}>
+      <form className="form" onSubmit={submit}>
+        <Field label={t("Nom du cadeau *")} error={fieldError(error, "name")}>
+          <input className="input" required maxLength={190} value={name} onChange={e => setName(e.target.value)} />
+        </Field>
+        <Field label={t("Description *")} error={fieldError(error, "description")}>
+          <textarea className="input" required maxLength={2000} rows={4} value={description} onChange={e => setDescription(e.target.value)} />
+        </Field>
+        <Field label={t("Prix approximatif (FCFA) *")} error={fieldError(error, "price")}>
+          <input className="input" required type="number" min="0" step="1" value={price} onChange={e => setPrice(e.target.value)} />
+        </Field>
+        <Field label={t("Lieu / boutique où le cadeau est commercialisé *")} error={fieldError(error, "seller_name")}>
+          <input className="input" required maxLength={190} value={sellerName} onChange={e => setSellerName(e.target.value)} />
+        </Field>
+        <Field label={t("Photo du cadeau * (JPG, PNG ou WEBP · 5 Mo max.)")} error={fieldError(error, "image")}>
+          <input className="input" required type="file" accept="image/jpeg,image/png,image/webp" onChange={e => setImage(e.target.files?.[0] ?? null)} />
+        </Field>
+        {preview && <img className="manual-gift-preview" src={preview} alt={t("Aperçu du cadeau")} />}
+        <ErrorBox error={error instanceof ApiError && !Object.keys(error.errors).length ? error : null} />
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Ajout…") : t("Ajouter à ma liste")}</button>
+      </form>
+    </Modal>
   );
 }
 

@@ -25,9 +25,11 @@ class OrderController extends Controller
             'customer_phone' => ['required', 'string', 'max:30'],
             'customer_email' => ['nullable', 'email'],
             'delivery_city' => ['nullable', 'string', 'max:80'],
-            'delivery_address' => ['nullable', 'string', 'max:255'],
+            'delivery_address' => ['required', 'string', 'max:255'],
             'message' => ['nullable', 'string', 'max:1000'],
             'payment_method' => ['required', 'in:orange_money,mtn_momo'],
+        ], [
+            'delivery_address.required' => __('Précisez le lieu de livraison.'),
         ]);
 
         $order = DB::transaction(function () use ($data, $request) {

@@ -272,8 +272,8 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
   });
   const [forWho, setForWho] = useState<string[]>(gift?.for_who ?? []);
   const [occasions, setOccasions] = useState<string[]>(gift?.occasions ?? []);
-  const [image, setImage] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(gift?.image_url ?? null);
+  const [images, setImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>(gift?.image_urls?.length ? gift.image_urls : gift?.image_url ? [gift.image_url] : []);
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
@@ -286,7 +286,7 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
     Object.entries(form).forEach(([k, v]) => fd.append(k, typeof v === "boolean" ? (v ? "1" : "0") : v));
     fd.append("for_who", JSON.stringify(forWho));
     fd.append("occasions", JSON.stringify(occasions));
-    if (image) fd.append("image", image);
+    images.forEach(image => fd.append("images[]", image));
     setBusy(true);
     setErr(null);
     try {
@@ -303,13 +303,23 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
     <Modal title={gift ? t("Modifier le cadeau") : t("Nouveau cadeau")} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <div className="image-picker">
-          {preview ? <img src={preview} alt="" /> : <div className="photo-empty"><Icon name="image" size={30} /></div>}
-          <Field label={t("Photo {required} (JPG, PNG, WEBP · 5 Mo max.)", { required: gift ? "" : "*" })} error={fieldError(err, "image")}>
-            <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => {
-              const f = e.target.files?.[0] ?? null;
-              setImage(f);
-              if (f) setPreview(URL.createObjectURL(f));
+          <div className="gift-image-previews">
+            {previews.length ? previews.map((src, index) => <img key={`${src}-${index}`} className="gift-image-preview" src={src} alt={t("Photo {n}", { n: index + 1 })} />) : <div className="photo-empty"><Icon name="image" size={30} /></div>}
+          </div>
+          <Field label={t("Photos {required} (JPG, PNG, WEBP · 5 Mo max. chacune)", { required: gift ? "" : "*" })} error={fieldError(err, "images")}>
+            <input className="input" type="file" multiple accept="image/png,image/jpeg,image/webp" onChange={e => {
+              const selected = Array.from(e.currentTarget.files ?? []);
+              if (selected.length > 4) {
+                const message = t("Un cadeau peut avoir au maximum 4 photos.");
+                setErr(new ApiError(message, 422, { images: [message] }));
+                e.currentTarget.value = "";
+                return;
+              }
+              setErr(null);
+              setImages(selected);
+              setPreviews(selected.map(file => URL.createObjectURL(file)));
             }} />
+            <p className="note">{t("Jusqu’à 4 photos. Si vous les remplacez, sélectionnez toutes celles à conserver.")}</p>
           </Field>
         </div>
         <Field label={t("Nom *")} error={fieldError(err, "name")}><input className="input" required value={form.name} onChange={set("name")} placeholder={t("Le rituel du thé")} /></Field>

@@ -83,7 +83,7 @@ export default function Order() {
             </div>
             <div className="grid-2">
               <Field label={t("Ville de livraison")}><input className="input" value={form.delivery_city} onChange={set("delivery_city")} /></Field>
-              <Field label={t("Adresse / quartier")}><input className="input" value={form.delivery_address} onChange={set("delivery_address")} placeholder="Cocody, Riviera 2" /></Field>
+              <Field label={t("Lieu de livraison *")} error={fieldError(err, "delivery_address")}><input className="input" required value={form.delivery_address} onChange={set("delivery_address")} placeholder={t("Quartier, rue et point de repère")} /></Field>
             </div>
             <Field label={t("Petit mot (facultatif)")}><textarea className="input" value={form.message} onChange={set("message")} placeholder={t("Joyeux anniversaire !")} /></Field>
             <div className="field">
