@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
-import { Link, NavLink, Route, Routes } from "react-router-dom";
-import { api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, Wrapping } from "../api";
+import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, User, Wrapping } from "../api";
 import { ErrorBox, Field, fieldError, LangSwitch, Loading, Modal } from "../components";
 import { t } from "../i18n";
 import { Icon } from "../icons";
@@ -13,20 +13,24 @@ const REQUEST_STATUS: Record<string, string> = { nouvelle: "Nouvelle", en_cours:
 
 export default function Admin() {
   const { user, logout } = useStore();
+  const isPartner = user?.role === "partner";
   return (
     <div className="admin">
       <aside className="admin-side">
         <Link to="/" className="logo"><img src="/img/logo.png" alt="cadoter.com" /></Link>
-        <p className="eyebrow admin-eyebrow">{t("Administration")}</p>
+        <p className="eyebrow admin-eyebrow">{isPartner ? t("Espace boutique") : t("Administration")}</p>
         <nav>
-          <NavLink to="/admin" end><Icon name="clock" size={18} />{t("Tableau de bord")}</NavLink>
+          <NavLink to="/admin" end><Icon name="clock" size={18} />{isPartner ? t("Accueil") : t("Tableau de bord")}</NavLink>
           <NavLink to="/admin/cadeaux"><Icon name="gift" size={18} />{t("Cadeaux")}</NavLink>
-          <NavLink to="/admin/emballages"><Icon name="image" size={18} />{t("Emballages")}</NavLink>
-          <NavLink to="/admin/commandes"><Icon name="list" size={18} />{t("Commandes")}</NavLink>
-          <NavLink to="/admin/demandes"><Icon name="mail" size={18} />{t("Demandes perso.")}</NavLink>
+          {!isPartner && <>
+            <NavLink to="/admin/boutiques"><Icon name="user" size={18} />{t("Boutiques partenaires")}</NavLink>
+            <NavLink to="/admin/emballages"><Icon name="image" size={18} />{t("Emballages")}</NavLink>
+            <NavLink to="/admin/commandes"><Icon name="list" size={18} />{t("Commandes")}</NavLink>
+            <NavLink to="/admin/demandes"><Icon name="mail" size={18} />{t("Demandes perso.")}</NavLink>
+          </>}
         </nav>
         <div className="admin-user">
-          <b>{user?.name}</b>
+          <b>{isPartner ? user?.shop_name : user?.name}</b>
           <span className="note admin-email">{user?.email}</span>
           <LangSwitch />
           <button className="link" onClick={logout}><Icon name="logout" size={16} />{t("Se déconnecter")}</button>
@@ -34,14 +38,141 @@ export default function Admin() {
       </aside>
       <main className="admin-main">
         <Routes>
-          <Route index element={<Dashboard />} />
+          <Route index element={isPartner ? <PartnerDashboard /> : <Dashboard />} />
           <Route path="cadeaux" element={<Gifts />} />
-          <Route path="emballages" element={<Wrappings />} />
-          <Route path="commandes" element={<Orders />} />
-          <Route path="demandes" element={<Requests />} />
+          {!isPartner && <>
+            <Route path="boutiques" element={<Partners />} />
+            <Route path="emballages" element={<Wrappings />} />
+            <Route path="commandes" element={<Orders />} />
+            <Route path="demandes" element={<Requests />} />
+          </>}
+          <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
     </div>
+  );
+}
+
+function PartnerDashboard() {
+  const { user } = useStore();
+  const { data, error, loading, reload } = useApi<{ active_gifts: number; revenue: number }>("/admin/partner-stats");
+  return (
+    <>
+      <h1 className="h1">{t("Bienvenue chez {name}", { name: user?.shop_name || t("votre boutique") })}</h1>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : data && (
+        <div className="stats" style={{ marginBottom: 28 }}>
+          <Link to="/admin/cadeaux" className="stat">
+            <span className="note">{t("Cadeaux en ligne")}</span>
+            <strong>{data.active_gifts}</strong>
+            <span className="note">{t("Produits actuellement publiés")}</span>
+          </Link>
+          <div className="stat">
+            <span className="note">{t("Chiffre d’affaires")}</span>
+            <strong>{formatPrice(data.revenue)}</strong>
+            <span className="note">{t("Commandes payées ou livrées")}</span>
+          </div>
+        </div>
+      )}
+      <div className="panel rose">
+        <h2 className="h2">{t("Vos produits sur CADOTER")}</h2>
+        <p className="muted small" style={{ margin: "10px 0 16px" }}>
+          {t("Publiez vos cadeaux et gérez uniquement les produits de votre boutique. Ils apparaîtront dans le catalogue avec le nom de votre enseigne.")}
+        </p>
+        <Link to="/admin/cadeaux?new=1" className="btn btn-primary">{t("Publier un produit")} <Icon name="plus" size={18} /></Link>
+      </div>
+    </>
+  );
+}
+
+type Partner = Pick<User, "id" | "name" | "email" | "phone" | "shop_name"> & { created_at: string };
+
+function Partners() {
+  const { notify } = useStore();
+  const { data, error, loading, reload } = useApi<Partner[]>("/admin/partners");
+  const [creating, setCreating] = useState(false);
+
+  return (
+    <>
+      <div className="admin-head">
+        <h1 className="h1">Boutiques partenaires</h1>
+        <button className="btn btn-primary" onClick={() => setCreating(true)}>Ouvrir un compte <Icon name="plus" size={18} /></button>
+      </div>
+      <p className="muted small" style={{ marginBottom: 20 }}>Créez les accès des boutiques qui pourront publier et gérer leurs propres produits.</p>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th>Boutique</th><th>Responsable</th><th>Email</th><th>Téléphone</th><th>Compte créé</th></tr></thead>
+            <tbody>
+              {data?.map(partner => (
+                <tr key={partner.id}>
+                  <td><b>{partner.shop_name}</b></td>
+                  <td>{partner.name}</td>
+                  <td>{partner.email}</td>
+                  <td>{partner.phone || "—"}</td>
+                  <td>{date(partner.created_at)}</td>
+                </tr>
+              ))}
+              {data?.length === 0 && <tr><td colSpan={5} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucune boutique partenaire. Ouvrez le premier compte.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {creating && <PartnerForm onClose={() => setCreating(false)} onSaved={() => { setCreating(false); reload(); notify("Compte boutique créé."); }} />}
+    </>
+  );
+}
+
+function PartnerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ name: "", shop_name: "", email: "", phone: "", password: "", password_confirmation: "" });
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (key: keyof typeof form) => (event: { target: { value: string } }) => setForm({ ...form, [key]: event.target.value });
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/admin/partners", { body: form });
+      onSaved();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title="Ouvrir un compte boutique" onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <Field label="Nom de la boutique *" error={fieldError(error, "shop_name")}>
+          <input className="input" required maxLength={120} value={form.shop_name} onChange={set("shop_name")} placeholder="Les fleurs de Grâce" />
+        </Field>
+        <Field label="Nom du responsable *" error={fieldError(error, "name")}>
+          <input className="input" required maxLength={120} value={form.name} onChange={set("name")} placeholder="Grâce Kouassi" />
+        </Field>
+        <div className="grid-2">
+          <Field label="Email de connexion *" error={fieldError(error, "email")}>
+            <input className="input" type="email" required value={form.email} onChange={set("email")} />
+          </Field>
+          <Field label="Téléphone" error={fieldError(error, "phone")}>
+            <input className="input" type="tel" value={form.phone} onChange={set("phone")} />
+          </Field>
+        </div>
+        <div className="grid-2">
+          <Field label="Mot de passe initial *" error={fieldError(error, "password")}>
+            <input className="input" type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set("password")} />
+          </Field>
+          <Field label="Confirmer le mot de passe *" error={fieldError(error, "password_confirmation")}>
+            <input className="input" type="password" required minLength={8} autoComplete="new-password" value={form.password_confirmation} onChange={set("password_confirmation")} />
+          </Field>
+        </div>
+        <ErrorBox error={error instanceof ApiError && !Object.keys(error.errors).length ? error : null} />
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Création…" : "Créer le compte"}</button>
+      </form>
+    </Modal>
   );
 }
 
@@ -75,7 +206,8 @@ function Dashboard() {
 }
 
 function Gifts() {
-  const { notify } = useStore();
+  const { notify, user } = useStore();
+  const isPartner = user?.role === "partner";
   const [q, setQ] = useState("");
   const { data, error, loading, reload } = useApi<Gift[]>(`/admin/gifts${q ? `?q=${encodeURIComponent(q)}` : ""}`);
   const [editing, setEditing] = useState<Gift | "new" | null>(() => (new URLSearchParams(window.location.search).get("new") ? "new" : null));
@@ -102,24 +234,25 @@ function Gifts() {
       {loading && !data ? <Loading /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th></th><th>{t("Cadeau")}</th><th>{t("Prix")}</th><th>{t("Lieu")}</th><th>{t("Stock")}</th><th>{t("En ligne")}</th><th>{t("À la une")}</th><th></th></tr></thead>
+            <thead><tr><th></th><th>{t("Cadeau")}</th>{!isPartner && <th>{t("Vendeur")}</th>}<th>{t("Prix")}</th><th>{t("Lieu")}</th><th>{t("Stock")}</th><th>{t("En ligne")}</th>{!isPartner && <th>{t("À la une")}</th>}<th></th></tr></thead>
             <tbody>
               {data?.map(g => (
                 <tr key={g.id}>
                   <td className="cell-thumb">{g.image_url && <img src={g.image_url} alt="" className="table-thumb" />}</td>
                   <td className="cell-main"><b>{g.name}</b><br /><span className="note">{(g.occasions ?? []).map(o => t(o)).join(", ")}</span></td>
+                  {!isPartner && <td data-label={t("Vendeur")}>{g.seller_name}</td>}
                   <td data-label={t("Prix")}>{formatPrice(g.price, g.currency)}</td>
                   <td data-label={t("Lieu")}>{g.city}{g.area && ` · ${g.area}`}</td>
                   <td data-label={t("Stock")}>{g.stock ?? "∞"}</td>
                   <td data-label={t("En ligne")}><button className={`switch ${g.is_active ? "on" : ""}`} onClick={() => toggle(g, "is_active")} aria-label={t("En ligne")} aria-pressed={g.is_active} /></td>
-                  <td data-label={t("À la une")}><button className={`switch ${g.is_featured ? "on" : ""}`} onClick={() => toggle(g, "is_featured")} aria-label={t("À la une")} aria-pressed={g.is_featured} /></td>
+                  {!isPartner && <td data-label={t("À la une")}><button className={`switch ${g.is_featured ? "on" : ""}`} onClick={() => toggle(g, "is_featured")} aria-label={t("À la une")} aria-pressed={g.is_featured} /></td>}
                   <td className="actions">
                     <button className="link" onClick={() => setEditing(g)}>{t("Modifier")}</button>
                     <button className="link-plain" onClick={() => remove(g)}>{t("Supprimer")}</button>
                   </td>
                 </tr>
               ))}
-              {data?.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucun cadeau. Créez le premier !")}</td></tr>}
+              {data?.length === 0 && <tr><td colSpan={isPartner ? 7 : 9} className="muted" style={{ textAlign: "center", padding: 30 }}>{isPartner ? t("Aucun produit publié. Ajoutez le premier !") : t("Aucun cadeau. Créez le premier !")}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -130,7 +263,8 @@ function Gifts() {
 }
 
 function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () => void; onSaved: () => void }) {
-  const { meta } = useStore();
+  const { meta, user } = useStore();
+  const isPartner = user?.role === "partner";
   const [form, setForm] = useState({
     name: gift?.name ?? "", description: gift?.description ?? "", price: gift ? String(gift.price) : "",
     city: gift?.city ?? "Abidjan", area: gift?.area ?? "", shop: gift?.shop ?? "", category: gift?.category ?? "",
@@ -190,7 +324,7 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
         </div>
         <datalist id="cities">{(meta?.cities ?? []).map(c => <option key={c} value={c} />)}</datalist>
         <div className="grid-2">
-          <Field label={t("Boutique")}><input className="input" value={form.shop} onChange={set("shop")} /></Field>
+          <Field label={t("Point de vente")}><input className="input" value={form.shop} onChange={set("shop")} placeholder={t("Adresse ou nom du point de vente")} /></Field>
           <Field label={t("Catégorie")}><input className="input" value={form.category} onChange={set("category")} placeholder={t("Maison, Fleurs…")} /></Field>
         </div>
         <div className="field"><span>{t("Pour qui ?")}</span>
@@ -201,7 +335,7 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
         </div>
         <div className="chips">
           <label className="check"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>{t("En ligne")}</label>
-          <label className="check"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>{t("À la une (page d'accueil)")}</label>
+          {!isPartner && <label className="check"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>{t("À la une (page d'accueil)")}</label>}
         </div>
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
         <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button>

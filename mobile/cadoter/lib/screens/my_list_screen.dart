@@ -186,6 +186,10 @@ class _MyListScreenState extends State<MyListScreen> {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           const SizedBox(height: 4),
                           Text(item.name, style: T.sans(14, weight: FontWeight.w600)),
+                          if (item.sellerName != null) ...[
+                            const SizedBox(height: 5),
+                            Text('Vendu par ${item.sellerName}', style: T.sans(11, color: AppColors.gray)),
+                          ],
                           const SizedBox(height: 6),
                           Text(formatPrice(item.price, item.currency), style: T.sans(12, color: AppColors.magenta)),
                           const SizedBox(height: 8),

@@ -8,6 +8,8 @@ type Store = {
   ready: boolean; // session vérifiée au démarrage
   login: (login: string, password: string) => Promise<User>;
   register: (data: { name: string; phone: string; email: string; password: string; password_confirmation: string; terms: boolean }) => Promise<User>;
+  updateUser: (data: Pick<User, "name" | "email" | "language"> & { phone: string | null }) => Promise<User>;
+  updatePassword: (data: { current_password: string; password: string; password_confirmation: string }) => Promise<void>;
   logout: () => Promise<void>;
   meta: Meta | null;
   favorites: number[];
@@ -78,6 +80,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     },
     login: async (login, password) => startSession(await api("/login", { body: { login, password } })),
     register: async data => startSession(await api("/register", { body: { ...data, language: getLang() } })),
+    updateUser: async data => {
+      const updatedUser = await api<User>("/me", { method: "PUT", body: data });
+      setUser(updatedUser);
+      if (updatedUser.language === "fr" || updatedUser.language === "en") {
+        setLang(updatedUser.language);
+        setLangState(updatedUser.language);
+      }
+      return updatedUser;
+    },
+    updatePassword: async data => {
+      await api<{ message: string }>("/me/password", { method: "PUT", body: data });
+    },
     logout: async () => {
       await api("/logout", { method: "POST" }).catch(() => undefined);
       token.set(null);
@@ -131,6 +145,6 @@ export function RequireAuth({ children, admin = false }: { children: ReactNode; 
   const loc = useLocation();
   if (!ready) return <div className="wrap"><p className="loading">{t("Chargement…")}</p></div>;
   if (!user) return <Navigate to={`${admin ? "/admin/connexion" : "/connexion"}?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
-  if (admin && user.role !== "admin") return <div className="wrap"><div className="empty" style={{ marginTop: 60 }}>{t("Accès réservé aux administrateurs.")}</div></div>;
+  if (admin && !["admin", "partner"].includes(user.role)) return <div className="wrap"><div className="empty" style={{ marginTop: 60 }}>{t("Accès réservé aux administrateurs et boutiques partenaires.")}</div></div>;
   return <>{children}</>;
 }

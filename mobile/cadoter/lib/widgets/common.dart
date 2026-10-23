@@ -216,6 +216,8 @@ class GiftTile extends StatelessWidget {
           const SizedBox(height: 10),
           Text(gift.name, style: T.sans(14, weight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 6),
+          Text('Vendu par ${gift.sellerName}', style: T.sans(11, color: AppColors.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
           Text(gift.place, style: T.sans(12, color: AppColors.gray)),
           const SizedBox(height: 8),
           Text(formatPrice(gift.price, gift.currency), style: T.sans(15, weight: FontWeight.w600, color: AppColors.magenta)),

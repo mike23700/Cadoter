@@ -15,6 +15,7 @@ import Custom from "./pages/Custom";
 import Inspirations, { ArticlePage } from "./pages/Inspirations";
 import Favorites from "./pages/Favorites";
 import MyOrders from "./pages/MyOrders";
+import Profile from "./pages/Profile";
 import Order from "./pages/Order";
 import Admin from "./pages/Admin";
 import { Login, Signup } from "./pages/Auth";
@@ -28,6 +29,7 @@ const nav: [string, string][] = [
 ];
 
 const accountLinks: [IconName, string, string][] = [
+  ["user", "Mon profil", "/profil"],
   ["list", "Mes listes", "/listes"],
   ["clock", "Mon historique", "/commandes"],
   ["heart", "Mes favoris", "/favoris"],
@@ -46,8 +48,8 @@ function AccountMenu({ onClose }: { onClose: () => void }) {
       <h3>{t("Bonjour, {name}.", { name: firstName(user) })}</h3>
       <p className="mail">{user.email}</p>
       <div className="menu-list">
-        {user.role === "admin" && (
-          <Link to="/admin" onClick={onClose} role="menuitem"><Icon name="shield" size={17} /><span className="grow">{t("Administration")}</span><Icon name="chevron" size={14} /></Link>
+        {["admin", "partner"].includes(user.role) && (
+          <Link to="/admin" onClick={onClose} role="menuitem"><Icon name="shield" size={17} /><span className="grow">{user.role === "partner" ? t("Ma boutique") : t("Administration")}</span><Icon name="chevron" size={14} /></Link>
         )}
         {accountLinks.map(([icon, label, to]) => (
           <Link key={label} to={to} onClick={onClose} role="menuitem">
@@ -178,6 +180,7 @@ export default function App() {
           <Route path="/cadeaux" element={<Catalog />} />
           <Route path="/cadeaux/:id" element={<GiftPage />} />
           <Route path="/listes" element={<RequireAuth><Lists /></RequireAuth>} />
+          <Route path="/profil" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/commander/:slug" element={<Order />} />
           <Route path="/connexion" element={<Login />} />
           <Route path="/inscription" element={<Signup />} />

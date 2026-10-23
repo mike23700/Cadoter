@@ -83,6 +83,8 @@ class _GiftScreenState extends State<GiftScreen> {
               const Spacer(),
               Flexible(child: Text(gift.place, textAlign: TextAlign.right, style: T.sans(12, color: AppColors.gray))),
             ]),
+            const SizedBox(height: 8),
+            Text('Vendu par ${gift.sellerName}', style: T.sans(13, weight: FontWeight.w600)),
             if (gift.description != null) ...[
               const SizedBox(height: 18),
               Text(gift.description!, style: T.sans(14, color: AppColors.gray)),

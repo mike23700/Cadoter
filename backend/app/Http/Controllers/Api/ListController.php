@@ -6,13 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Models\GiftList;
 use App\Models\ListItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 
 class ListController extends Controller
 {
     public function index(Request $request)
     {
-        $lists = $request->user()->lists()->with('items.gift')->latest()->get();
+        $lists = $request->user()->lists()->with('items.gift.partner:id,shop_name')->latest()->get();
 
         return response()->json($lists->map(fn ($l) => $this->present($l)));
     }
@@ -29,14 +30,14 @@ class ListController extends Controller
         }
         $list->save();
 
-        return response()->json($this->present($list->load('items.gift')), 201);
+        return response()->json($this->present($list->load('items.gift.partner:id,shop_name')), 201);
     }
 
     public function show(Request $request, GiftList $list)
     {
         $this->authorizeOwner($request, $list);
 
-        return response()->json($this->present($list->load('items.gift')));
+        return response()->json($this->present($list->load('items.gift.partner:id,shop_name')));
     }
 
     /** POST (multipart) ou PUT. */
@@ -49,7 +50,7 @@ class ListController extends Controller
         }
         $list->update($data);
 
-        return response()->json($this->present($list->load('items.gift')));
+        return response()->json($this->present($list->load('items.gift.partner:id,shop_name')));
     }
 
     public function destroy(Request $request, GiftList $list)
@@ -170,7 +171,7 @@ class ListController extends Controller
             return $out;
         }
         try {
-            $html = \Illuminate\Support\Facades\Http::timeout(5)->withOptions(['allow_redirects' => false])->withHeaders(['User-Agent' => 'Mozilla/5.0 CadoterBot'])->get($url)->body();
+            $html = Http::timeout(5)->withOptions(['allow_redirects' => false])->withHeaders(['User-Agent' => 'Mozilla/5.0 CadoterBot'])->get($url)->body();
             $meta = function (string $prop) use ($html) {
                 return preg_match('/<meta[^>]+(?:property|name)=["\']'.preg_quote($prop, '/').'["\'][^>]+content=["\']([^"\']+)/i', $html, $m)
                     ? html_entity_decode($m[1]) : null;

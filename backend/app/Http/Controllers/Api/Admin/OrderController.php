@@ -27,6 +27,22 @@ class OrderController extends Controller
         ]);
     }
 
+    public function partnerStats(Request $request)
+    {
+        $partner = $request->user();
+        abort_unless($partner->role === 'partner', 403);
+
+        $revenue = Order::query()
+            ->whereIn('status', ['payee', 'livree'])
+            ->whereHas('gift', fn ($query) => $query->where('partner_id', $partner->id))
+            ->sum('total');
+
+        return response()->json([
+            'active_gifts' => $partner->gifts()->where('is_active', true)->count(),
+            'revenue' => (int) $revenue,
+        ]);
+    }
+
     public function index(Request $request)
     {
         return response()->json(

@@ -14,8 +14,8 @@ export default function Catalog() {
   const get = (k: string) => params.get(k) ?? "";
 
   // Brouillon du formulaire, appliqué au clic sur « Appliquer les filtres »
-  const [draft, setDraft] = useState({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who") });
-  useEffect(() => setDraft({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who") }), [params]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [draft, setDraft] = useState({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion") });
+  useEffect(() => setDraft({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion") }), [params]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const query = qs({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion"), sort: get("sort") });
   const { data: gifts, error, loading, reload } = useApi<Gift[]>(`/gifts${query}`);
@@ -52,6 +52,12 @@ export default function Catalog() {
               <select className="input" value={draft.budget} onChange={e => setDraft({ ...draft, budget: e.target.value })}>
                 <option value="">{t("Tous les budgets")}</option>
                 {budgets.map(b => <option key={b} value={b}>{formatPrice(b)}</option>)}
+              </select>
+            </Field>
+            <Field label={t("Type d’événement")}>
+              <select className="input" value={draft.occasion} onChange={e => setDraft({ ...draft, occasion: e.target.value })}>
+                <option value="">{t("Tous les événements")}</option>
+                {(meta?.occasions ?? []).map(occasion => <option key={occasion} value={occasion}>{t(occasion)}</option>)}
               </select>
             </Field>
             <Field label={t("Ville")}>

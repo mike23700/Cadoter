@@ -10,7 +10,7 @@ class FavoriteController extends Controller
 {
     public function index(Request $request)
     {
-        return response()->json($request->user()->favorites()->where('is_active', true)->get());
+        return response()->json($request->user()->favorites()->with('partner:id,shop_name')->where('is_active', true)->get());
     }
 
     public function toggle(Request $request, Gift $gift)

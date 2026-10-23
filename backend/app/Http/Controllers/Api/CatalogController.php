@@ -15,10 +15,10 @@ class CatalogController extends Controller
 
     public function gifts(Request $request)
     {
-        $q = Gift::query()->where('is_active', true);
+        $q = Gift::query()->with('partner:id,shop_name')->where('is_active', true);
 
         if ($s = trim((string) $request->query('q'))) {
-            $q->where(fn ($w) => $w->where('name', 'ilike', "%$s%")->orWhere('description', 'ilike', "%$s%"));
+            $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('description', 'like', "%$s%"));
         }
         if ($budget = (int) $request->query('budget')) {
             $q->where('price', '<=', $budget);
@@ -50,7 +50,7 @@ class CatalogController extends Controller
 
     public function gift(string $slug)
     {
-        $gift = Gift::where('is_active', true)
+        $gift = Gift::with('partner:id,shop_name')->where('is_active', true)
             ->where(fn ($w) => ctype_digit($slug) ? $w->whereKey($slug) : $w->where('slug', $slug))
             ->firstOrFail();
 

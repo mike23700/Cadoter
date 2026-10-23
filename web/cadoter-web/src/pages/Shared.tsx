@@ -82,6 +82,7 @@ export default function Shared() {
               <div>
                 <h4>{item.name}</h4>
                 <p className="price small" style={{ marginBottom: 8 }}>{formatPrice(item.price, item.currency)}</p>
+                {item.seller_name && <p className="note" style={{ marginBottom: 8 }}>Vendu par {item.seller_name}</p>}
                 <Badge status={item.status}>{free ? t("Disponible à réserver") : item.status === "Réservé" ? t("Réservé · indisponible") : t("Indisponible")}</Badge>
                 {!free && <p className="note" style={{ marginTop: 6 }}>{t("Un proche a déjà choisi ce cadeau.")}</p>}
               </div>

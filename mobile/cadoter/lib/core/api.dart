@@ -148,6 +148,7 @@ class Gift {
     required this.currency,
     required this.city,
     this.area,
+    this.sellerName = 'cadoter.com',
     this.imageUrl,
     required this.available,
     this.forWho = const [],
@@ -161,6 +162,7 @@ class Gift {
   final String currency;
   final String city;
   final String? area;
+  final String sellerName;
   final String? imageUrl;
   final bool available;
   final List<String> forWho;
@@ -177,6 +179,7 @@ class Gift {
         currency: j['currency'] ?? 'FCFA',
         city: j['city'] ?? '',
         area: j['area'],
+        sellerName: j['seller_name'] ?? 'cadoter.com',
         imageUrl: fixUrl(j['image_url']),
         available: j['available'] ?? true,
         forWho: List<String>.from(j['for_who'] ?? const []),
@@ -195,6 +198,7 @@ class ListItem {
     required this.currency,
     this.city,
     this.area,
+    this.sellerName,
     this.imageUrl,
     this.externalUrl,
     this.reservedBy,
@@ -208,6 +212,7 @@ class ListItem {
   final String currency;
   final String? city;
   final String? area;
+  final String? sellerName;
   final String? imageUrl;
   final String? externalUrl;
   final String? reservedBy;
@@ -224,6 +229,7 @@ class ListItem {
         currency: j['currency'] ?? 'FCFA',
         city: j['city'],
         area: j['area'],
+        sellerName: j['seller_name'],
         imageUrl: fixUrl(j['image_url']),
         externalUrl: j['external_url'],
         reservedBy: j['reserved_by_name'],

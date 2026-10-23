@@ -22,7 +22,7 @@ export function Login({ admin = false }: { admin?: boolean }) {
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
-  if (user && (!admin || user.role === "admin")) return <Navigate to={next} replace />;
+  if (user && (!admin || ["admin", "partner"].includes(user.role))) return <Navigate to={next} replace />;
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -30,7 +30,7 @@ export function Login({ admin = false }: { admin?: boolean }) {
     setErr(null);
     try {
       const u = await login(form.login, form.password);
-      if (admin && u.role !== "admin") throw new ApiError(t("Ce compte n'a pas accès à l'administration."), 403);
+      if (admin && !["admin", "partner"].includes(u.role)) throw new ApiError(t("Ce compte n'a pas accès à cet espace."), 403);
       nav(next, { replace: true });
     } catch (e) {
       setErr(e);
@@ -45,7 +45,7 @@ export function Login({ admin = false }: { admin?: boolean }) {
       <form className="auth-card" onSubmit={submit}>
         {admin && <p className="eyebrow">{t("Administration CADOTER")}</p>}
         <h1 className="display">{admin ? t("Espace administrateur.") : t("Heureux de vous retrouver.")}</h1>
-        <p className="muted">{admin ? t("Gérez le catalogue, les commandes et les demandes.") : t("Vos envies et vos prochaines attentions vous attendent.")}</p>
+        <p className="muted">{admin ? t("Gérez le catalogue CADOTER ou votre boutique partenaire.") : t("Vos envies et vos prochaines attentions vous attendent.")}</p>
         <Field label={t("Email / Téléphone")} error={fieldError(err, "login")}>
           <input className="input" autoComplete="username" required value={form.login} onChange={e => setForm({ ...form, login: e.target.value })} placeholder={t("aicha@exemple.com")} />
         </Field>

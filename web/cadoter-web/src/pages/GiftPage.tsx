@@ -61,7 +61,9 @@ export default function GiftPage() {
           <Badge status={gift.available ? "Disponible" : "Indisponible"} />
           <h1 className="display" style={{ fontSize: 52, lineHeight: 1.15 }}>{gift.name}</h1>
           <p className="big-price">{formatPrice(gift.price, gift.currency)}</p>
-          <p className="place"><Icon name="pin" />{giftPlace(gift)}{gift.shop && ` · ${gift.shop}`}</p>
+          <p className="seller-name">Vendu par <strong>{gift.seller_name}</strong></p>
+          <p className="place"><Icon name="pin" />{giftPlace(gift)}</p>
+          {gift.shop && <p className="small muted">Point de vente : {gift.shop}</p>}
           {gift.description && <p className="lead" style={{ fontSize: 16 }}>{gift.description}</p>}
           <p className="small">{t("À vérifier auprès du marchand : disponibilité, retrait et modalités de livraison.")}</p>
 

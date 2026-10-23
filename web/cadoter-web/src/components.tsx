@@ -17,6 +17,7 @@ export function GiftCard({ gift }: { gift: Gift }) {
       <Photo src={gift.image_url} alt={gift.name} />
       <Badge status={gift.available ? "Disponible" : "Indisponible"} />
       <h3>{gift.name}</h3>
+      <p className="seller-name">Vendu par <strong>{gift.seller_name}</strong></p>
       <p className="muted">{giftPlace(gift)}</p>
       <p className="price">{formatPrice(gift.price, gift.currency)}</p>
     </Link>

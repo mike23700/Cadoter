@@ -76,14 +76,38 @@ class AuthController extends Controller
     public function update(Request $request)
     {
         $user = $request->user();
+        if ($request->has('email')) {
+            $request->merge(['email' => strtolower(trim((string) $request->input('email')))]);
+        }
         $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:120'],
-            'phone' => ['sometimes', 'string', 'max:30', 'unique:users,phone,'.$user->id],
+            'name' => ['sometimes', 'required', 'string', 'max:120'],
+            'email' => ['sometimes', 'required', 'email', 'max:190', 'unique:users,email,'.$user->id],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:30', 'unique:users,phone,'.$user->id],
             'language' => ['sometimes', 'in:fr,en'],
         ]);
         $user->update($data);
 
         return response()->json($user);
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'confirmed', 'different:current_password', Password::min(8)],
+        ], [
+            'password.different' => 'Le nouveau mot de passe doit être différent de l’actuel.',
+        ]);
+
+        if (! Hash::check($data['current_password'], $request->user()->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Le mot de passe actuel est incorrect.',
+            ]);
+        }
+
+        $request->user()->update(['password' => $data['password']]);
+
+        return response()->json(['message' => 'Mot de passe modifié.']);
     }
 
     private function session(User $user, Request $request): array

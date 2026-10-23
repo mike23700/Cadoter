@@ -4,7 +4,7 @@ import { getLang, locale, t } from "./i18n";
 export const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8001/api";
 const TOKEN_KEY = "cadoter:token";
 
-export type User = { id: number; name: string; email: string; phone: string | null; role: "user" | "admin"; language: string };
+export type User = { id: number; name: string; email: string; phone: string | null; role: "user" | "admin" | "partner"; shop_name?: string | null; language: string };
 
 export type Gift = {
   id: number;
@@ -17,6 +17,7 @@ export type Gift = {
   city: string;
   area: string | null;
   shop: string | null;
+  seller_name: string;
   category: string | null;
   for_who: string[] | null;
   occasions: string[] | null;
@@ -35,6 +36,7 @@ export type ListItem = {
   gift_id: number | null;
   gift_slug: string | null;
   name: string;
+  seller_name: string | null;
   price: number | null;
   currency: string;
   city: string | null;

@@ -40,7 +40,7 @@ class AssistantController extends Controller
             ->mapWithKeys(fn ($w) => [Str::ascii($w) => $w])
             ->filter(fn ($w, $k) => strlen($k) >= 3 && ! in_array($k, $stop, true));
 
-        $gifts = Gift::where('is_active', true)->where('price', '<=', $data['budget'])
+        $gifts = Gift::with('partner:id,shop_name')->where('is_active', true)->where('price', '<=', $data['budget'])
             ->when($data['city'] ?? null, fn ($q, $c) => $q->where('city', $c))
             ->get()
             ->map(function (Gift $g) use ($data, $forWho, $words) {

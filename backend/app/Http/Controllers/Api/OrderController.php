@@ -66,7 +66,7 @@ class OrderController extends Controller
 
     public function mine(Request $request)
     {
-        return response()->json(Order::where('user_id', $request->user()->id)->with('gift')->latest()->get());
+        return response()->json(Order::where('user_id', $request->user()->id)->with('gift.partner:id,shop_name')->latest()->get());
     }
 
     /** Formulaire « cadeau personnalisé » : pas de commande directe, l'équipe recontacte. */

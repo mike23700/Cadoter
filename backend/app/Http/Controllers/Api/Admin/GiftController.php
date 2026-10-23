@@ -11,9 +11,12 @@ class GiftController extends Controller
 {
     public function index(Request $request)
     {
-        $q = Gift::query()->latest();
+        $q = Gift::query()->with('partner:id,shop_name')->latest();
+        if (! $request->user()->isAdmin()) {
+            $q->where('partner_id', $request->user()->id);
+        }
         if ($s = $request->query('q')) {
-            $q->where('name', 'ilike', "%$s%");
+            $q->where('name', 'like', "%$s%");
         }
 
         return response()->json($q->get());
@@ -21,16 +24,22 @@ class GiftController extends Controller
 
     public function store(Request $request)
     {
-        $gift = new Gift($this->validated($request, true));
+        $data = $this->validated($request, true);
+        $gift = new Gift($data);
+        $gift->partner_id = $request->user()->isAdmin() ? null : $request->user()->id;
+        if (! $request->user()->isAdmin()) {
+            $gift->is_featured = false;
+        }
         $gift->image_path = $request->file('image')?->store('gifts', 'public');
         $gift->save();
 
-        return response()->json($gift, 201);
+        return response()->json($gift->load('partner:id,shop_name'), 201);
     }
 
     /** POST multipart (envoi d'image) ou PUT. */
     public function update(Request $request, Gift $gift)
     {
+        $this->authorizeGift($request, $gift);
         $gift->fill($this->validated($request, false));
         if ($request->hasFile('image')) {
             $old = $gift->image_path;
@@ -41,11 +50,12 @@ class GiftController extends Controller
         }
         $gift->save();
 
-        return response()->json($gift);
+        return response()->json($gift->load('partner:id,shop_name'));
     }
 
-    public function destroy(Gift $gift)
+    public function destroy(Request $request, Gift $gift)
     {
+        $this->authorizeGift($request, $gift);
         if ($gift->image_path) {
             Storage::disk('public')->delete($gift->image_path);
         }
@@ -64,7 +74,7 @@ class GiftController extends Controller
         }
         $req = $creating ? 'required' : 'sometimes';
 
-        $data = $request->validate([
+        $rules = [
             'name' => [$req, 'string', 'max:190'],
             'description' => ['nullable', 'string', 'max:3000'],
             'price' => [$req, 'integer', 'min:0'],
@@ -80,11 +90,23 @@ class GiftController extends Controller
             'occasions.*' => ['string', 'max:60'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
-            'is_featured' => ['nullable', 'boolean'],
             'image' => [$creating ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], ['image.required' => __('Ajoutez une photo du cadeau.')]);
+        ];
+        if ($request->user()->isAdmin()) {
+            $rules['is_featured'] = ['nullable', 'boolean'];
+        }
+
+        $data = $request->validate($rules, ['image.required' => __('Ajoutez une photo du cadeau.')]);
         unset($data['image']);
 
         return $data;
+    }
+
+    private function authorizeGift(Request $request, Gift $gift): void
+    {
+        abort_unless(
+            $request->user()->isAdmin() || (int) $gift->partner_id === (int) $request->user()->id,
+            404,
+        );
     }
 }

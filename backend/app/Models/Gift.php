@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -13,7 +14,7 @@ class Gift extends Model
         'category', 'for_who', 'occasions', 'image_path', 'stock', 'is_active', 'is_featured',
     ];
 
-    protected $appends = ['image_url', 'available'];
+    protected $appends = ['image_url', 'available', 'seller_name'];
 
     protected function casts(): array
     {
@@ -50,5 +51,15 @@ class Gift extends Model
     public function getAvailableAttribute(): bool
     {
         return $this->is_active && ($this->stock === null || $this->stock > 0);
+    }
+
+    public function partner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'partner_id');
+    }
+
+    public function getSellerNameAttribute(): string
+    {
+        return $this->partner?->shop_name ?: 'cadoter.com';
     }
 }

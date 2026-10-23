@@ -171,6 +171,7 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
           <div>
             <h4>{item.gift_slug ? <Link to={`/cadeaux/${item.gift_slug}`}>{item.name}</Link> : item.external_url ? <a href={item.external_url} target="_blank" rel="noreferrer noopener">{item.name}</a> : item.name}</h4>
             <p>{[item.city, item.area, formatPrice(item.price, item.currency)].filter(Boolean).join(" · ")}</p>
+            {item.seller_name && <p className="note">Vendu par {item.seller_name}</p>}
             {item.reserved_by_name && <p className="note">{t("Réservé par {name}", { name: item.reserved_by_name })}</p>}
           </div>
           <Badge status={item.status} />
