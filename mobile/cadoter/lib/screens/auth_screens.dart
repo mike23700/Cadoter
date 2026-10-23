@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -64,9 +65,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 8, kGutter, 24), children: [
               const NetImage('assets/images/emballage-rose.jpg', aspect: 354 / 175),
               const SizedBox(height: 30),
-              Text('Heureux de vous retrouver.', style: T.serif(34)),
+              Text(tr('Heureux de vous retrouver.'), style: T.serif(34)),
               const SizedBox(height: 16),
-              Text('Vos envies et vos prochaines attentions vous attendent.', style: T.sans(14, color: AppColors.gray)),
+              Text(tr('Vos envies et vos prochaines attentions vous attendent.'), style: T.sans(14, color: AppColors.gray)),
               const SizedBox(height: 26),
               LabeledField(
                 label: 'Email / Téléphone',
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboard: TextInputType.emailAddress,
                 autofill: const [AutofillHints.username],
                 errorText: _error?.field('login'),
-                validator: (v) => (v ?? '').trim().isEmpty ? 'Saisissez votre email ou téléphone.' : null,
+                validator: (v) => (v ?? '').trim().isEmpty ? tr('Saisissez votre email ou téléphone.') : null,
               ),
               LabeledField(
                 label: 'Mot de passe',
@@ -83,13 +84,13 @@ class _LoginScreenState extends State<LoginScreen> {
                 hint: '••••••••••',
                 obscure: true,
                 autofill: const [AutofillHints.password],
-                validator: (v) => (v ?? '').isEmpty ? 'Saisissez votre mot de passe.' : null,
+                validator: (v) => (v ?? '').isEmpty ? tr('Saisissez votre mot de passe.') : null,
               ),
               Align(
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
                   onTap: () => toast(context, 'Écrivez-nous à contact@cadoter.com pour réinitialiser votre mot de passe.'),
-                  child: Text('Mot de passe oublié ?', style: T.sans(12, color: AppColors.magenta)),
+                  child: Text(tr('Mot de passe oublié ?'), style: T.sans(12, color: AppColors.magenta)),
                 ),
               ),
               if (_error != null && _error!.errors.isEmpty) ...[
@@ -128,7 +129,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _busy = false;
   ApiException? _error;
 
-  String? _required(String? v) => (v ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
+  String? _required(String? v) => (v ?? '').trim().isEmpty ? tr('Champ obligatoire.') : null;
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
@@ -163,31 +164,31 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Form(
             key: _form,
             child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
-              Text('Bienvenue dans les belles attentions.', style: T.serif(30)),
+              Text(tr('Bienvenue dans les belles attentions.'), style: T.serif(30)),
               const SizedBox(height: 26),
               LabeledField(label: 'Nom *', controller: _name, hint: 'Aïcha Koné', validator: _required, errorText: _error?.field('name'), autofill: const [AutofillHints.name]),
               LabeledField(label: 'Téléphone *', controller: _phone, hint: '+225 07 00 00 00 00', keyboard: TextInputType.phone, validator: _required, errorText: _error?.field('phone'), autofill: const [AutofillHints.telephoneNumber]),
               LabeledField(
                 label: 'Email *', controller: _email, hint: 'aicha@exemple.com', keyboard: TextInputType.emailAddress,
                 errorText: _error?.field('email'), autofill: const [AutofillHints.email],
-                validator: (v) => RegExp(r'^\S+@\S+\.\S+$').hasMatch((v ?? '').trim()) ? null : 'Email invalide.',
+                validator: (v) => RegExp(r'^\S+@\S+\.\S+$').hasMatch((v ?? '').trim()) ? null : tr('Email invalide.'),
               ),
               LabeledField(
                 label: 'Mot de passe *', controller: _password, hint: '••••••••••', obscure: true, errorText: _error?.field('password'),
-                validator: (v) => (v ?? '').length < 8 ? '8 caractères minimum.' : null,
+                validator: (v) => (v ?? '').length < 8 ? tr('8 caractères minimum.') : null,
               ),
               LabeledField(
                 label: 'Confirmer le mot de passe *', controller: _confirm, hint: '••••••••••', obscure: true,
-                validator: (v) => v != _password.text ? 'Les mots de passe ne correspondent pas.' : null,
+                validator: (v) => v != _password.text ? tr('Les mots de passe ne correspondent pas.') : null,
               ),
-              Text('8 caractères minimum. * Champs obligatoires.', style: T.sans(11, color: AppColors.gray)),
+              Text(tr('8 caractères minimum. * Champs obligatoires.'), style: T.sans(11, color: AppColors.gray)),
               const SizedBox(height: 22),
               GestureDetector(
                 onTap: () => setState(() => _terms = !_terms),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Icon(_terms ? Icons.check_box_outlined : Icons.check_box_outline_blank, color: AppColors.magenta, size: 22),
                   const SizedBox(width: 10),
-                  Expanded(child: Text("J'accepte les conditions d'utilisation et la politique de confidentialité.", style: T.sans(12))),
+                  Expanded(child: Text(tr("J'accepte les conditions d'utilisation et la politique de confidentialité."), style: T.sans(12))),
                 ]),
               ),
               const SizedBox(height: 22),
@@ -196,7 +197,7 @@ class _SignupScreenState extends State<SignupScreen> {
               Center(
                 child: GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Text('Déjà inscrit·e ? Se connecter', style: T.sans(12)),
+                  child: Text(tr('Déjà inscrit·e ? Se connecter'), style: T.sans(12)),
                 ),
               ),
             ]),

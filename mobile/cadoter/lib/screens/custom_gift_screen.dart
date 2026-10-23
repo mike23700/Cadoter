@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -24,7 +25,7 @@ class _CustomGiftScreenState extends State<CustomGiftScreen> {
   bool _busy = false;
   ApiException? _error;
 
-  String? _req(String? v) => (v ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
+  String? _req(String? v) => (v ?? '').trim().isEmpty ? tr('Champ obligatoire.') : null;
 
   Future<void> _continue() async {
     if (!_form.currentState!.validate()) return;
@@ -44,9 +45,9 @@ class _CustomGiftScreenState extends State<CustomGiftScreen> {
       await showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('Demande envoyée.', style: T.serif(22)),
+          title: Text(tr('Demande envoyée.'), style: T.serif(22)),
           content: Text('${res['message']}', style: T.sans(13)),
-          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('OK')))],
         ),
       );
       if (mounted) Navigator.pop(context);
@@ -67,18 +68,18 @@ class _CustomGiftScreenState extends State<CustomGiftScreen> {
           child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 8, kGutter, 24), children: [
             const NetImage('assets/images/bouquet.jpg', aspect: 354 / 170),
             const SizedBox(height: 28),
-            Text('Vous l’imaginez. On vous accompagne.', style: T.serif(32)),
+            Text(tr('Vous l’imaginez. On vous accompagne.'), style: T.serif(32)),
             const SizedBox(height: 16),
-            Text('Décrivez le cadeau souhaité. Nous vous recontacterons pour préciser votre demande.', style: T.sans(14, color: AppColors.gray)),
+            Text(tr('Décrivez le cadeau souhaité. Nous vous recontacterons pour préciser votre demande.'), style: T.sans(14, color: AppColors.gray)),
             const SizedBox(height: 24),
             LabeledField(label: 'Nom *', controller: _name, hint: 'Aïcha Koné', validator: _req, errorText: _error?.field('name')),
             LabeledField(label: 'Téléphone *', controller: _phone, hint: '+225 07 00 00 00 00', keyboard: TextInputType.phone, validator: _req, errorText: _error?.field('phone')),
             LabeledField(
               label: 'Budget *', controller: _budget, hint: '30 000 FCFA', keyboard: TextInputType.number, errorText: _error?.field('budget'),
-              validator: (v) => (int.tryParse((v ?? '').replaceAll(RegExp(r'\D'), '')) ?? 0) < 1000 ? 'Budget minimum : 1 000 FCFA.' : null,
+              validator: (v) => (int.tryParse((v ?? '').replaceAll(RegExp(r'\D'), '')) ?? 0) < 1000 ? tr('Budget minimum : 1 000 FCFA.') : null,
             ),
             LabeledField(label: 'Description du cadeau *', controller: _desc, maxLines: 4, hint: 'Un coffret de thé pour ma mère…', validator: _req, errorText: _error?.field('description')),
-            Text('* Champs obligatoires · Vos coordonnées servent à suivre cette demande.', style: T.sans(11, color: AppColors.gray)),
+            Text(tr('* Champs obligatoires · Vos coordonnées servent à suivre cette demande.'), style: T.sans(11, color: AppColors.gray)),
             const SizedBox(height: 24),
             PrimaryButton('Continuer vers l’emballage', loading: _busy, onPressed: _continue),
           ]),

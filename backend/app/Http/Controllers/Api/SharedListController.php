@@ -27,10 +27,10 @@ class SharedListController extends Controller
 
         $item = DB::transaction(function () use ($list, $item, $data, $user) {
             $item = ListItem::whereKey($item)->where('gift_list_id', $list->id)->lockForUpdate()->firstOrFail();
-            abort_if($item->status !== 'Disponible', 409, 'Un proche a déjà choisi ce cadeau.');
+            abort_if($item->status !== 'Disponible', 409, __('Un proche a déjà choisi ce cadeau.'));
             $item->update([
                 'status' => 'Réservé',
-                'reserved_by_name' => $data['name'] ?? $user?->name ?? 'Un proche',
+                'reserved_by_name' => $data['name'] ?? $user?->name ?? __('Un proche'),
                 'reserved_by_user_id' => $user?->id,
                 'reserved_at' => now(),
             ]);
@@ -45,7 +45,7 @@ class SharedListController extends Controller
     {
         $list = GiftList::where('code', $code)->firstOrFail();
         if ($list->is_locked && $request->input('access_code', $request->header('X-Access-Code')) !== $list->access_code) {
-            abort(response()->json(['message' => "Cette liste est protégée par un code d'accès.", 'locked' => true, 'title' => $list->title], 423));
+            abort(response()->json(['message' => __("Cette liste est protégée par un code d'accès."), 'locked' => true, 'title' => $list->title], 423));
         }
 
         return $list;

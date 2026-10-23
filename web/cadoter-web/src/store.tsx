@@ -1,6 +1,7 @@
-import { createContext, DependencyList, ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, DependencyList, Fragment, ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { api, ApiError, Gift, Meta, token, User } from "./api";
+import { getLang, hasStoredLang, Lang, setLang, t } from "./i18n";
 
 type Store = {
   user: User | null;
@@ -13,6 +14,8 @@ type Store = {
   toggleFavorite: (gift: Gift) => Promise<void>;
   toast: string | null;
   notify: (msg: string) => void;
+  lang: Lang;
+  setLanguage: (l: Lang) => void;
 };
 
 const Ctx = createContext<Store | null>(null);
@@ -23,6 +26,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [lang, setLangState] = useState<Lang>(getLang);
   const timer = useRef<number>();
 
   const notify = useCallback((msg: string) => {
@@ -39,22 +43,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     api<Meta>("/meta").then(setMeta).catch(() => setMeta(null));
     if (!token.get()) { setReady(true); return; }
     api<User>("/me")
-      .then(u => { setUser(u); loadFavorites(); })
+      .then(u => {
+        // Sans choix enregistré sur cet appareil, on reprend la langue du compte
+        if (!hasStoredLang() && (u.language === "fr" || u.language === "en") && u.language !== getLang()) { setLang(u.language); setLangState(u.language); }
+        setUser(u);
+        loadFavorites();
+      })
       .catch(() => token.set(null))
       .finally(() => setReady(true));
   }, [loadFavorites]);
 
   const startSession = (res: { token: string; user: User }) => {
     token.set(res.token);
+    // La langue affichée à la connexion devient celle du compte
+    if (res.user.language !== getLang()) {
+      api<User>("/me", { method: "PUT", body: { language: getLang() } }).catch(() => undefined);
+      res.user = { ...res.user, language: getLang() };
+    }
     setUser(res.user);
     loadFavorites();
     return res.user;
   };
 
   const store: Store = {
-    user, ready, meta, favorites, toast, notify,
+    user, ready, meta, favorites, toast, notify, lang,
+    setLanguage: l => {
+      if (l === lang) return;
+      setLang(l);
+      setLangState(l);
+      if (user) {
+        setUser({ ...user, language: l });
+        api("/me", { method: "PUT", body: { language: l } }).catch(() => undefined);
+      }
+    },
     login: async (login, password) => startSession(await api("/login", { body: { login, password } })),
-    register: async data => startSession(await api("/register", { body: data })),
+    register: async data => startSession(await api("/register", { body: { ...data, language: getLang() } })),
     logout: async () => {
       await api("/logout", { method: "POST" }).catch(() => undefined);
       token.set(null);
@@ -62,14 +85,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setFavorites([]);
     },
     toggleFavorite: async gift => {
-      if (!user) { notify("Connectez-vous pour enregistrer vos favoris."); return; }
+      if (!user) { notify(t("Connectez-vous pour enregistrer vos favoris.")); return; }
       const { favorite } = await api<{ favorite: boolean }>(`/favorites/${gift.id}`, { method: "POST" });
       setFavorites(f => (favorite ? [...f, gift.id] : f.filter(id => id !== gift.id)));
-      notify(favorite ? "Ajouté à vos favoris." : "Retiré de vos favoris.");
+      notify(favorite ? t("Ajouté à vos favoris.") : t("Retiré de vos favoris."));
     },
   };
 
-  return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
+  // key : changer de langue réaffiche toute l'application dans la nouvelle langue
+  return <Ctx.Provider value={store}><Fragment key={lang}>{children}</Fragment></Ctx.Provider>;
 }
 
 export function useStore() {
@@ -105,8 +129,8 @@ export function useApi<T>(path: string | null, deps: DependencyList = []) {
 export function RequireAuth({ children, admin = false }: { children: ReactNode; admin?: boolean }) {
   const { user, ready } = useStore();
   const loc = useLocation();
-  if (!ready) return <div className="wrap"><p className="loading">Chargement…</p></div>;
+  if (!ready) return <div className="wrap"><p className="loading">{t("Chargement…")}</p></div>;
   if (!user) return <Navigate to={`${admin ? "/admin/connexion" : "/connexion"}?next=${encodeURIComponent(loc.pathname + loc.search)}`} replace />;
-  if (admin && user.role !== "admin") return <div className="wrap"><div className="empty" style={{ marginTop: 60 }}>Accès réservé aux administrateurs.</div></div>;
+  if (admin && user.role !== "admin") return <div className="wrap"><div className="empty" style={{ marginTop: 60 }}>{t("Accès réservé aux administrateurs.")}</div></div>;
   return <>{children}</>;
 }

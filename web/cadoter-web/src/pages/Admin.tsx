@@ -1,7 +1,8 @@
 import { FormEvent, useState } from "react";
 import { Link, NavLink, Route, Routes } from "react-router-dom";
-import { api, ApiError, CustomRequest, formatPrice, Gift, Order, Wrapping } from "../api";
-import { ErrorBox, Field, fieldError, Loading, Modal } from "../components";
+import { api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, Wrapping } from "../api";
+import { ErrorBox, Field, fieldError, LangSwitch, Loading, Modal } from "../components";
+import { t } from "../i18n";
 import { Icon } from "../icons";
 import { useApi, useStore } from "../store";
 
@@ -9,7 +10,6 @@ type Stats = { gifts: number; active_gifts: number; orders: number; pending_orde
 
 const ORDER_STATUS: Record<string, string> = { en_attente: "En attente de paiement", payee: "Payée", livree: "Livrée", annulee: "Annulée" };
 const REQUEST_STATUS: Record<string, string> = { nouvelle: "Nouvelle", en_cours: "En cours", traitee: "Traitée" };
-const date = (s: string) => new Date(s).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
 
 export default function Admin() {
   const { user, logout } = useStore();
@@ -17,18 +17,19 @@ export default function Admin() {
     <div className="admin">
       <aside className="admin-side">
         <Link to="/" className="logo"><img src="/img/logo.png" alt="cadoter.com" /></Link>
-        <p className="eyebrow" style={{ margin: "18px 0 10px" }}>Administration</p>
+        <p className="eyebrow admin-eyebrow">{t("Administration")}</p>
         <nav>
-          <NavLink to="/admin" end><Icon name="clock" size={18} />Tableau de bord</NavLink>
-          <NavLink to="/admin/cadeaux"><Icon name="gift" size={18} />Cadeaux</NavLink>
-          <NavLink to="/admin/emballages"><Icon name="image" size={18} />Emballages</NavLink>
-          <NavLink to="/admin/commandes"><Icon name="list" size={18} />Commandes</NavLink>
-          <NavLink to="/admin/demandes"><Icon name="mail" size={18} />Demandes perso.</NavLink>
+          <NavLink to="/admin" end><Icon name="clock" size={18} />{t("Tableau de bord")}</NavLink>
+          <NavLink to="/admin/cadeaux"><Icon name="gift" size={18} />{t("Cadeaux")}</NavLink>
+          <NavLink to="/admin/emballages"><Icon name="image" size={18} />{t("Emballages")}</NavLink>
+          <NavLink to="/admin/commandes"><Icon name="list" size={18} />{t("Commandes")}</NavLink>
+          <NavLink to="/admin/demandes"><Icon name="mail" size={18} />{t("Demandes perso.")}</NavLink>
         </nav>
         <div className="admin-user">
           <b>{user?.name}</b>
-          <span className="note">{user?.email}</span>
-          <button className="link" onClick={logout}><Icon name="logout" size={16} />Se déconnecter</button>
+          <span className="note admin-email">{user?.email}</span>
+          <LangSwitch />
+          <button className="link" onClick={logout}><Icon name="logout" size={16} />{t("Se déconnecter")}</button>
         </div>
       </aside>
       <main className="admin-main">
@@ -58,16 +59,16 @@ function Dashboard() {
   ];
   return (
     <>
-      <h1 className="h1">Tableau de bord</h1>
+      <h1 className="h1">{t("Tableau de bord")}</h1>
       <div className="stats">
         {cards.map(([label, value, to]) => (
-          <Link to={to} key={label} className="stat"><span className="note">{label}</span><strong>{value}</strong></Link>
+          <Link to={to} key={label} className="stat"><span className="note">{t(label)}</span><strong>{value}</strong></Link>
         ))}
       </div>
       <div className="panel rose" style={{ marginTop: 28 }}>
-        <h2 className="h2">Ajouter un cadeau au catalogue</h2>
-        <p className="muted small" style={{ margin: "10px 0 16px" }}>Les cadeaux publiés apparaissent immédiatement sur l'accueil, le catalogue, l'assistante IA et l'application mobile.</p>
-        <Link to="/admin/cadeaux?new=1" className="btn btn-primary">Nouveau cadeau <Icon name="plus" size={18} /></Link>
+        <h2 className="h2">{t("Ajouter un cadeau au catalogue")}</h2>
+        <p className="muted small" style={{ margin: "10px 0 16px" }}>{t("Les cadeaux publiés apparaissent immédiatement sur l'accueil, le catalogue, l'assistante IA et l'application mobile.")}</p>
+        <Link to="/admin/cadeaux?new=1" className="btn btn-primary">{t("Nouveau cadeau")} <Icon name="plus" size={18} /></Link>
       </div>
     </>
   );
@@ -84,46 +85,46 @@ function Gifts() {
     reload();
   };
   const remove = async (g: Gift) => {
-    if (!window.confirm(`Supprimer « ${g.name} » du catalogue ?`)) return;
+    if (!window.confirm(t("Supprimer « {name} » du catalogue ?", { name: g.name }))) return;
     await api(`/admin/gifts/${g.id}`, { method: "DELETE" });
-    notify("Cadeau supprimé.");
+    notify(t("Cadeau supprimé."));
     reload();
   };
 
   return (
     <>
       <div className="admin-head">
-        <h1 className="h1">Cadeaux</h1>
-        <button className="btn btn-primary" onClick={() => setEditing("new")}>Nouveau cadeau <Icon name="plus" size={18} /></button>
+        <h1 className="h1">{t("Cadeaux")}</h1>
+        <button className="btn btn-primary" onClick={() => setEditing("new")}>{t("Nouveau cadeau")} <Icon name="plus" size={18} /></button>
       </div>
-      <input className="input" style={{ maxWidth: 360, marginBottom: 20 }} placeholder="Rechercher un cadeau…" value={q} onChange={e => setQ(e.target.value)} />
+      <input className="input admin-search" placeholder={t("Rechercher un cadeau…")} value={q} onChange={e => setQ(e.target.value)} />
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th></th><th>Cadeau</th><th>Prix</th><th>Lieu</th><th>Stock</th><th>En ligne</th><th>À la une</th><th></th></tr></thead>
+            <thead><tr><th></th><th>{t("Cadeau")}</th><th>{t("Prix")}</th><th>{t("Lieu")}</th><th>{t("Stock")}</th><th>{t("En ligne")}</th><th>{t("À la une")}</th><th></th></tr></thead>
             <tbody>
               {data?.map(g => (
                 <tr key={g.id}>
-                  <td>{g.image_url && <img src={g.image_url} alt="" className="table-thumb" />}</td>
-                  <td><b>{g.name}</b><br /><span className="note">{(g.occasions ?? []).join(", ")}</span></td>
-                  <td>{formatPrice(g.price, g.currency)}</td>
-                  <td>{g.city}{g.area && ` · ${g.area}`}</td>
-                  <td>{g.stock ?? "∞"}</td>
-                  <td><button className={`switch ${g.is_active ? "on" : ""}`} onClick={() => toggle(g, "is_active")} aria-label="En ligne" aria-pressed={g.is_active} /></td>
-                  <td><button className={`switch ${g.is_featured ? "on" : ""}`} onClick={() => toggle(g, "is_featured")} aria-label="À la une" aria-pressed={g.is_featured} /></td>
+                  <td className="cell-thumb">{g.image_url && <img src={g.image_url} alt="" className="table-thumb" />}</td>
+                  <td className="cell-main"><b>{g.name}</b><br /><span className="note">{(g.occasions ?? []).map(o => t(o)).join(", ")}</span></td>
+                  <td data-label={t("Prix")}>{formatPrice(g.price, g.currency)}</td>
+                  <td data-label={t("Lieu")}>{g.city}{g.area && ` · ${g.area}`}</td>
+                  <td data-label={t("Stock")}>{g.stock ?? "∞"}</td>
+                  <td data-label={t("En ligne")}><button className={`switch ${g.is_active ? "on" : ""}`} onClick={() => toggle(g, "is_active")} aria-label={t("En ligne")} aria-pressed={g.is_active} /></td>
+                  <td data-label={t("À la une")}><button className={`switch ${g.is_featured ? "on" : ""}`} onClick={() => toggle(g, "is_featured")} aria-label={t("À la une")} aria-pressed={g.is_featured} /></td>
                   <td className="actions">
-                    <button className="link" onClick={() => setEditing(g)}>Modifier</button>
-                    <button className="link-plain" onClick={() => remove(g)}>Supprimer</button>
+                    <button className="link" onClick={() => setEditing(g)}>{t("Modifier")}</button>
+                    <button className="link-plain" onClick={() => remove(g)}>{t("Supprimer")}</button>
                   </td>
                 </tr>
               ))}
-              {data?.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucun cadeau. Créez le premier !</td></tr>}
+              {data?.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucun cadeau. Créez le premier !")}</td></tr>}
             </tbody>
           </table>
         </div>
       )}
-      {editing && <GiftForm gift={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify("Cadeau enregistré."); }} />}
+      {editing && <GiftForm gift={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify(t("Cadeau enregistré.")); }} />}
     </>
   );
 }
@@ -165,11 +166,11 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
   };
 
   return (
-    <Modal title={gift ? "Modifier le cadeau" : "Nouveau cadeau"} onClose={onClose}>
+    <Modal title={gift ? t("Modifier le cadeau") : t("Nouveau cadeau")} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <div className="image-picker">
           {preview ? <img src={preview} alt="" /> : <div className="photo-empty"><Icon name="image" size={30} /></div>}
-          <Field label={`Photo ${gift ? "" : "*"} (JPG, PNG, WEBP · 5 Mo max.)`} error={fieldError(err, "image")}>
+          <Field label={t("Photo {required} (JPG, PNG, WEBP · 5 Mo max.)", { required: gift ? "" : "*" })} error={fieldError(err, "image")}>
             <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => {
               const f = e.target.files?.[0] ?? null;
               setImage(f);
@@ -177,33 +178,33 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
             }} />
           </Field>
         </div>
-        <Field label="Nom *" error={fieldError(err, "name")}><input className="input" required value={form.name} onChange={set("name")} placeholder="Le rituel du thé" /></Field>
-        <Field label="Description" error={fieldError(err, "description")}><textarea className="input" value={form.description} onChange={set("description")} /></Field>
+        <Field label={t("Nom *")} error={fieldError(err, "name")}><input className="input" required value={form.name} onChange={set("name")} placeholder={t("Le rituel du thé")} /></Field>
+        <Field label={t("Description")} error={fieldError(err, "description")}><textarea className="input" value={form.description} onChange={set("description")} /></Field>
         <div className="grid-2">
-          <Field label="Prix (FCFA) *" error={fieldError(err, "price")}><input className="input" type="number" min={0} required value={form.price} onChange={set("price")} /></Field>
-          <Field label="Stock (vide = illimité)" error={fieldError(err, "stock")}><input className="input" type="number" min={0} value={form.stock} onChange={set("stock")} /></Field>
+          <Field label={t("Prix (FCFA) *")} error={fieldError(err, "price")}><input className="input" type="number" min={0} required value={form.price} onChange={set("price")} /></Field>
+          <Field label={t("Stock (vide = illimité)")} error={fieldError(err, "stock")}><input className="input" type="number" min={0} value={form.stock} onChange={set("stock")} /></Field>
         </div>
         <div className="grid-2">
-          <Field label="Ville *" error={fieldError(err, "city")}><input className="input" required list="cities" value={form.city} onChange={set("city")} /></Field>
-          <Field label="Quartier"><input className="input" value={form.area} onChange={set("area")} placeholder="Cocody" /></Field>
+          <Field label={t("Ville *")} error={fieldError(err, "city")}><input className="input" required list="cities" value={form.city} onChange={set("city")} /></Field>
+          <Field label={t("Quartier")}><input className="input" value={form.area} onChange={set("area")} placeholder="Cocody" /></Field>
         </div>
         <datalist id="cities">{(meta?.cities ?? []).map(c => <option key={c} value={c} />)}</datalist>
         <div className="grid-2">
-          <Field label="Boutique"><input className="input" value={form.shop} onChange={set("shop")} /></Field>
-          <Field label="Catégorie"><input className="input" value={form.category} onChange={set("category")} placeholder="Maison, Fleurs…" /></Field>
+          <Field label={t("Boutique")}><input className="input" value={form.shop} onChange={set("shop")} /></Field>
+          <Field label={t("Catégorie")}><input className="input" value={form.category} onChange={set("category")} placeholder={t("Maison, Fleurs…")} /></Field>
         </div>
-        <div className="field"><span>Pour qui ?</span>
-          <div className="chips">{(meta?.for_who ?? []).map(f => <button type="button" key={f} className={`chip ${forWho.includes(f) ? "on" : ""}`} onClick={() => setForWho(flip(forWho, f))}>{f}</button>)}</div>
+        <div className="field"><span>{t("Pour qui ?")}</span>
+          <div className="chips">{(meta?.for_who ?? []).map(f => <button type="button" key={f} className={`chip ${forWho.includes(f) ? "on" : ""}`} onClick={() => setForWho(flip(forWho, f))}>{t(f)}</button>)}</div>
         </div>
-        <div className="field"><span>Occasions</span>
-          <div className="chips">{(meta?.occasions ?? []).map(o => <button type="button" key={o} className={`chip ${occasions.includes(o) ? "on" : ""}`} onClick={() => setOccasions(flip(occasions, o))}>{o}</button>)}</div>
+        <div className="field"><span>{t("Occasions")}</span>
+          <div className="chips">{(meta?.occasions ?? []).map(o => <button type="button" key={o} className={`chip ${occasions.includes(o) ? "on" : ""}`} onClick={() => setOccasions(flip(occasions, o))}>{t(o)}</button>)}</div>
         </div>
         <div className="chips">
-          <label className="check"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>En ligne</label>
-          <label className="check"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>À la une (page d'accueil)</label>
+          <label className="check"><input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>{t("En ligne")}</label>
+          <label className="check"><input type="checkbox" checked={form.is_featured} onChange={e => setForm({ ...form, is_featured: e.target.checked })} /><span className="box"><Icon name="check" size={14} /></span>{t("À la une (page d'accueil)")}</label>
         </div>
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
-        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Enregistrement…" : "Enregistrer"}</button>
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button>
       </form>
     </Modal>
   );
@@ -219,47 +220,46 @@ function Wrappings() {
     reload();
   };
   const remove = async (w: Wrapping) => {
-    if (!window.confirm(`Supprimer l'emballage « ${w.name} » ? Les commandes passées gardent leur historique.`)) return;
+    if (!window.confirm(t("Supprimer l'emballage « {name} » ? Les commandes passées gardent leur historique.", { name: w.name }))) return;
     await api(`/admin/wrappings/${w.id}`, { method: "DELETE" });
-    notify("Emballage supprimé.");
+    notify(t("Emballage supprimé."));
     reload();
   };
 
   return (
     <>
       <div className="admin-head">
-        <h1 className="h1">Emballages</h1>
-        <button className="btn btn-primary" onClick={() => setEditing("new")}>Nouvel emballage <Icon name="plus" size={18} /></button>
+        <h1 className="h1">{t("Emballages")}</h1>
+        <button className="btn btn-primary" onClick={() => setEditing("new")}>{t("Nouvel emballage")} <Icon name="plus" size={18} /></button>
       </div>
       <p className="muted small" style={{ marginBottom: 20 }}>
-        Proposés au moment de commander un cadeau et dans le formulaire « cadeau personnalisé », sur le web et le mobile.
-        Un emballage hors ligne n'est plus proposé aux clients.
+        {t("Proposés au moment de commander un cadeau et dans le formulaire « cadeau personnalisé », sur le web et le mobile. Un emballage hors ligne n'est plus proposé aux clients.")}
       </p>
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th></th><th>Emballage</th><th>Supplément</th><th>Ordre</th><th>En ligne</th><th></th></tr></thead>
+            <thead><tr><th></th><th>{t("Emballage")}</th><th>{t("Supplément")}</th><th>{t("Ordre")}</th><th>{t("En ligne")}</th><th></th></tr></thead>
             <tbody>
               {data?.map(w => (
                 <tr key={w.id}>
-                  <td>{w.image_url && <img src={w.image_url} alt="" className="table-thumb" />}</td>
-                  <td><b>{w.name}</b><br /><span className="note">{w.detail}</span></td>
-                  <td>{w.price ? `+ ${formatPrice(w.price)}` : "Offert"}</td>
-                  <td>{w.position}</td>
-                  <td><button className={`switch ${w.is_active ? "on" : ""}`} onClick={() => toggle(w)} aria-label="En ligne" aria-pressed={w.is_active} /></td>
+                  <td className="cell-thumb">{w.image_url && <img src={w.image_url} alt="" className="table-thumb" />}</td>
+                  <td className="cell-main"><b>{w.name}</b><br /><span className="note">{w.detail}</span></td>
+                  <td data-label={t("Supplément")}>{w.price ? `+ ${formatPrice(w.price)}` : t("Offert")}</td>
+                  <td data-label={t("Ordre")}>{w.position}</td>
+                  <td data-label={t("En ligne")}><button className={`switch ${w.is_active ? "on" : ""}`} onClick={() => toggle(w)} aria-label={t("En ligne")} aria-pressed={w.is_active} /></td>
                   <td className="actions">
-                    <button className="link" onClick={() => setEditing(w)}>Modifier</button>
-                    <button className="link-plain" onClick={() => remove(w)}>Supprimer</button>
+                    <button className="link" onClick={() => setEditing(w)}>{t("Modifier")}</button>
+                    <button className="link-plain" onClick={() => remove(w)}>{t("Supprimer")}</button>
                   </td>
                 </tr>
               ))}
-              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucun emballage. Créez le premier !</td></tr>}
+              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucun emballage. Créez le premier !")}</td></tr>}
             </tbody>
           </table>
         </div>
       )}
-      {editing && <WrappingForm wrapping={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify("Emballage enregistré."); }} />}
+      {editing && <WrappingForm wrapping={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify(t("Emballage enregistré.")); }} />}
     </>
   );
 }
@@ -293,11 +293,11 @@ function WrappingForm({ wrapping, onClose, onSaved }: { wrapping: Wrapping | nul
   };
 
   return (
-    <Modal title={wrapping ? "Modifier l'emballage" : "Nouvel emballage"} onClose={onClose}>
+    <Modal title={wrapping ? t("Modifier l'emballage") : t("Nouvel emballage")} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <div className="image-picker">
           {preview ? <img src={preview} alt="" /> : <div className="photo-empty"><Icon name="image" size={30} /></div>}
-          <Field label={`Photo ${wrapping ? "" : "*"} (JPG, PNG, WEBP · 5 Mo max.)`} error={fieldError(err, "image")}>
+          <Field label={t("Photo {required} (JPG, PNG, WEBP · 5 Mo max.)", { required: wrapping ? "" : "*" })} error={fieldError(err, "image")}>
             <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => {
               const f = e.target.files?.[0] ?? null;
               setImage(f);
@@ -305,18 +305,18 @@ function WrappingForm({ wrapping, onClose, onSaved }: { wrapping: Wrapping | nul
             }} />
           </Field>
         </div>
-        <Field label="Nom *" error={fieldError(err, "name")}><input className="input" required maxLength={120} value={form.name} onChange={set("name")} placeholder="Rosé signature" /></Field>
-        <Field label="Détail" error={fieldError(err, "detail")}><input className="input" maxLength={190} value={form.detail} onChange={set("detail")} placeholder="Papier rosé · Ruban magenta" /></Field>
+        <Field label={t("Nom *")} error={fieldError(err, "name")}><input className="input" required maxLength={120} value={form.name} onChange={set("name")} placeholder={t("Rosé signature")} /></Field>
+        <Field label={t("Détail")} error={fieldError(err, "detail")}><input className="input" maxLength={190} value={form.detail} onChange={set("detail")} placeholder={t("Papier rosé · Ruban magenta")} /></Field>
         <div className="grid-2">
-          <Field label="Supplément (FCFA, 0 = offert)" error={fieldError(err, "price")}><input className="input" type="number" min={0} value={form.price} onChange={set("price")} /></Field>
-          <Field label="Ordre d'affichage" error={fieldError(err, "position")}><input className="input" type="number" min={0} value={form.position} onChange={set("position")} placeholder="Automatique" /></Field>
+          <Field label={t("Supplément (FCFA, 0 = offert)")} error={fieldError(err, "price")}><input className="input" type="number" min={0} value={form.price} onChange={set("price")} /></Field>
+          <Field label={t("Ordre d'affichage")} error={fieldError(err, "position")}><input className="input" type="number" min={0} value={form.position} onChange={set("position")} placeholder={t("Automatique")} /></Field>
         </div>
         <label className="check">
           <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
-          <span className="box"><Icon name="check" size={14} /></span>En ligne (proposé aux clients)
+          <span className="box"><Icon name="check" size={14} /></span>{t("En ligne (proposé aux clients)")}
         </label>
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
-        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Enregistrement…" : "Enregistrer"}</button>
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button>
       </form>
     </Modal>
   );
@@ -328,29 +328,29 @@ function Orders() {
   const update = async (o: Order, s: string) => { await api(`/admin/orders/${o.id}`, { method: "PUT", body: { status: s } }); reload(); };
   return (
     <>
-      <div className="admin-head"><h1 className="h1">Commandes</h1></div>
+      <div className="admin-head"><h1 className="h1">{t("Commandes")}</h1></div>
       <div className="chips" style={{ marginBottom: 20 }}>
-        {[["", "Toutes"], ...Object.entries(ORDER_STATUS)].map(([k, l]) => <button key={k} className={`chip ${status === k ? "on" : ""}`} onClick={() => setStatus(k)}>{l}</button>)}
+        {[["", "Toutes"], ...Object.entries(ORDER_STATUS)].map(([k, l]) => <button key={k} className={`chip ${status === k ? "on" : ""}`} onClick={() => setStatus(k)}>{t(l)}</button>)}
       </div>
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Réf.</th><th>Date</th><th>Cadeau</th><th>Client</th><th>Livraison</th><th>Paiement</th><th>Total</th><th>Statut</th></tr></thead>
+            <thead><tr><th>{t("Réf.")}</th><th>{t("Date")}</th><th>{t("Cadeau")}</th><th>{t("Client")}</th><th>{t("Livraison")}</th><th>{t("Paiement")}</th><th>{t("Total")}</th><th>{t("Statut")}</th></tr></thead>
             <tbody>
               {data?.map(o => (
                 <tr key={o.id}>
-                  <td><b>{o.reference}</b></td>
-                  <td>{date(o.created_at)}</td>
-                  <td>{o.gift_name} × {o.quantity}{o.wrapping && <><br /><span className="note">Emballage : {o.wrapping.name}</span></>}{o.message && <><br /><span className="note">« {o.message} »</span></>}</td>
-                  <td>{o.customer_name}<br /><a className="note" href={`tel:${o.customer_phone}`}>{o.customer_phone}</a></td>
-                  <td>{[o.delivery_city, o.delivery_address].filter(Boolean).join(", ") || "—"}</td>
-                  <td>{o.payment_method === "mtn_momo" ? "MTN MoMo" : "Orange Money"}</td>
-                  <td className="price">{formatPrice(o.total, o.currency)}</td>
-                  <td><select className="input input-sm" value={o.status} onChange={e => update(o, e.target.value)}>{Object.entries(ORDER_STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></td>
+                  <td className="cell-main"><b>{o.reference}</b></td>
+                  <td data-label={t("Date")}>{date(o.created_at)}</td>
+                  <td data-label={t("Cadeau")} className="cell-wide">{o.gift_name} × {o.quantity}{o.wrapping && <><br /><span className="note">{t("Emballage : {name}", { name: o.wrapping.name })}</span></>}{o.message && <><br /><span className="note">« {o.message} »</span></>}</td>
+                  <td data-label={t("Client")}>{o.customer_name}<br /><a className="note" href={`tel:${o.customer_phone}`}>{o.customer_phone}</a></td>
+                  <td data-label={t("Livraison")}>{[o.delivery_city, o.delivery_address].filter(Boolean).join(", ") || "—"}</td>
+                  <td data-label={t("Paiement")}>{o.payment_method === "mtn_momo" ? "MTN MoMo" : "Orange Money"}</td>
+                  <td data-label={t("Total")} className="price">{formatPrice(o.total, o.currency)}</td>
+                  <td data-label={t("Statut")}><select className="input input-sm" value={o.status} onChange={e => update(o, e.target.value)}>{Object.entries(ORDER_STATUS).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></td>
                 </tr>
               ))}
-              {data?.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucune commande.</td></tr>}
+              {data?.length === 0 && <tr><td colSpan={8} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucune commande.")}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -364,24 +364,24 @@ function Requests() {
   const update = async (r: CustomRequest, s: string) => { await api(`/admin/custom-requests/${r.id}`, { method: "PUT", body: { status: s } }); reload(); };
   return (
     <>
-      <div className="admin-head"><h1 className="h1">Demandes personnalisées</h1></div>
+      <div className="admin-head"><h1 className="h1">{t("Demandes personnalisées")}</h1></div>
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Date</th><th>Client</th><th>Budget</th><th>Description</th><th>Emballage</th><th>Statut</th></tr></thead>
+            <thead><tr><th>{t("Date")}</th><th>{t("Client")}</th><th>{t("Budget")}</th><th>{t("Description")}</th><th>{t("Emballage")}</th><th>{t("Statut")}</th></tr></thead>
             <tbody>
               {data?.map(r => (
                 <tr key={r.id}>
-                  <td>{date(r.created_at)}</td>
-                  <td>{r.name}<br /><a className="note" href={`tel:${r.phone}`}>{r.phone}</a></td>
-                  <td className="price">{formatPrice(r.budget)}</td>
-                  <td style={{ maxWidth: 380 }}>{r.description}</td>
-                  <td>{r.wrapping?.name ?? "Sans"}</td>
-                  <td><select className="input input-sm" value={r.status} onChange={e => update(r, e.target.value)}>{Object.entries(REQUEST_STATUS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></td>
+                  <td className="cell-main">{date(r.created_at)}</td>
+                  <td data-label={t("Client")}>{r.name}<br /><a className="note" href={`tel:${r.phone}`}>{r.phone}</a></td>
+                  <td data-label={t("Budget")} className="price">{formatPrice(r.budget)}</td>
+                  <td data-label={t("Description")} className="cell-wide" style={{ maxWidth: 380 }}>{r.description}</td>
+                  <td data-label={t("Emballage")}>{r.wrapping?.name ?? t("Sans")}</td>
+                  <td data-label={t("Statut")}><select className="input input-sm" value={r.status} onChange={e => update(r, e.target.value)}>{Object.entries(REQUEST_STATUS).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}</select></td>
                 </tr>
               ))}
-              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucune demande.</td></tr>}
+              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucune demande.")}</td></tr>}
             </tbody>
           </table>
         </div>

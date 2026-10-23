@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -55,14 +56,14 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
   Widget build(BuildContext context) {
     final meta = SessionScope.of(context).meta;
     final body = ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
-      Text('La bonne attention, au bon endroit.', style: T.serif(32)),
+      Text(tr('La bonne attention, au bon endroit.'), style: T.serif(32)),
       const SizedBox(height: 24),
       const FieldLabel('Rechercher par nom'),
       TextField(
         controller: _q,
         style: T.sans(13),
         textInputAction: TextInputAction.search,
-        decoration: const InputDecoration(hintText: 'Quel cadeau cherchez-vous ?'),
+        decoration: InputDecoration(hintText: tr('Quel cadeau cherchez-vous ?')),
         onChanged: (_) {
           _debounce?.cancel();
           _debounce = Timer(const Duration(milliseconds: 400), _refresh);
@@ -75,7 +76,7 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
             label: 'Budget',
             value: _budget?.toString() ?? '',
             items: ['', ..._budgets.map((b) => '$b')],
-            display: (v) => v.isEmpty ? 'Tous' : '${formatPrice(int.parse(v))} max.',
+            display: (v) => v.isEmpty ? tr('Tous') : tr('{price} max.', {'price': formatPrice(int.parse(v))}),
             onChanged: (v) { _budget = (v == null || v.isEmpty) ? null : int.parse(v); _refresh(); },
           ),
         ),
@@ -85,7 +86,7 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
             label: 'Ville',
             value: _city ?? '',
             items: ['', ...meta.cities],
-            display: (v) => v.isEmpty ? 'Toutes' : v,
+            display: (v) => v.isEmpty ? tr('Toutes') : v,
             onChanged: (v) { _city = (v == null || v.isEmpty) ? null : v; _refresh(); },
           ),
         ),
@@ -96,7 +97,7 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
       ]),
       if (_occasion != null) ...[
         const SizedBox(height: 12),
-        Align(alignment: Alignment.centerLeft, child: Pill('$_occasion ×', selected: true, onTap: () { _occasion = null; _refresh(); })),
+        Align(alignment: Alignment.centerLeft, child: Pill('${tr(_occasion!)} ×', selected: true, onTap: () { _occasion = null; _refresh(); })),
       ],
       const SizedBox(height: 26),
       const IllustrativeNote(),
@@ -110,7 +111,7 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
           if (gifts.isEmpty) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 30),
-              child: Text('Aucun cadeau ne correspond à ces critères.', textAlign: TextAlign.center, style: T.sans(13, color: AppColors.gray)),
+              child: Text(tr('Aucun cadeau ne correspond à ces critères.'), textAlign: TextAlign.center, style: T.sans(13, color: AppColors.gray)),
             );
           }
           return GiftGrid(

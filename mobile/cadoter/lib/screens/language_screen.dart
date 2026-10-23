@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -44,9 +45,9 @@ class _LanguageScreenState extends State<LanguageScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Icon(Icons.language, color: AppColors.magenta, size: 36),
                 const SizedBox(height: 22),
-                Text('On parle la même langue.', style: T.serif(34)),
+                Text(tr('On parle la même langue.', const {}, lang), style: T.serif(34)),
                 const SizedBox(height: 18),
-                Text('Choisissez la langue qui vous ressemble. Vous pourrez la modifier dans les paramètres.',
+                Text(tr('Choisissez la langue qui vous ressemble. Vous pourrez la modifier dans les paramètres.', const {}, lang),
                     style: T.sans(14, color: AppColors.gray)),
                 const SizedBox(height: 46),
                 _option('fr', 'Français'),
@@ -61,7 +62,7 @@ class _LanguageScreenState extends State<LanguageScreen> {
                   }
                 }),
                 const SizedBox(height: 22),
-                Center(child: Text('Votre langue, votre expérience.', style: T.sans(12, color: AppColors.gray))),
+                Center(child: Text(tr('Votre langue, votre expérience.', const {}, lang), style: T.sans(12, color: AppColors.gray))),
               ]),
             ),
           ]),

@@ -22,14 +22,18 @@ class CadoterApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SessionScope(
         session: session,
-        child: MaterialApp(
-          title: 'CADOTER',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.light(),
-          locale: const Locale('fr'),
-          supportedLocales: const [Locale('fr'), Locale('en')],
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: const SplashScreen(),
+        child: ListenableBuilder(
+          listenable: session,
+          builder: (context, home) => MaterialApp(
+            title: 'CADOTER',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            locale: Locale(session.language),
+            supportedLocales: const [Locale('fr'), Locale('en')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            home: home,
+          ),
+          child: const SplashScreen(),
         ),
       );
 }

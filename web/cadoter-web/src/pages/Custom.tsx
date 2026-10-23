@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, ApiError } from "../api";
+import { api, ApiError, formatPrice } from "../api";
+import { t } from "../i18n";
 import { Breadcrumb, ErrorBox, Field, fieldError } from "../components";
 import { Icon } from "../icons";
 import { useStore } from "../store";
@@ -38,42 +39,42 @@ export default function Custom() {
 
   return (
     <div className="wrap">
-      <Breadcrumb items={[["Accueil", "/"], ["Cadeaux", "/cadeaux"], ["Cadeau personnalisé"]]} />
-      <h1 className="display page-title" style={{ fontSize: 52, lineHeight: 1.2 }}>Vous l'imaginez. On vous accompagne.</h1>
-      <p className="lead page-lead">Une envie particulière ? Décrivez votre attention, puis choisissez son écrin.</p>
+      <Breadcrumb items={[[t("Accueil"), "/"], [t("Cadeaux"), "/cadeaux"], [t("Cadeau personnalisé")]]} />
+      <h1 className="display page-title" style={{ fontSize: 52, lineHeight: 1.2 }}>{t("Vous l'imaginez. On vous accompagne.")}</h1>
+      <p className="lead page-lead">{t("Une envie particulière ? Décrivez votre attention, puis choisissez son écrin.")}</p>
 
       <div className="two-col custom" id="emballages">
         {sent ? (
           <div className="panel success">
             <span className="success-icon"><Icon name="check" size={30} /></span>
-            <h2 className="h1" style={{ fontSize: 32 }}>Demande envoyée.</h2>
+            <h2 className="h1" style={{ fontSize: 32 }}>{t("Demande envoyée.")}</h2>
             <p className="muted">{sent}</p>
-            <Link to="/cadeaux" className="btn btn-primary">Voir les cadeaux</Link>
+            <Link to="/cadeaux" className="btn btn-primary">{t("Voir les cadeaux")}</Link>
           </div>
         ) : (
           <form className="panel" onSubmit={submit}>
-            <h2 className="h2" style={{ fontSize: 28, marginBottom: 26 }}>Le cadeau que vous avez en tête</h2>
+            <h2 className="h2" style={{ fontSize: 28, marginBottom: 26 }}>{t("Le cadeau que vous avez en tête")}</h2>
             <div className="form">
               <div className="grid-2">
-                <Field label="Nom *" error={fieldError(err, "name")}><input className="input" required value={form.name} onChange={set("name")} placeholder="Aïcha Koné" /></Field>
-                <Field label="Téléphone *" error={fieldError(err, "phone")}><input className="input" type="tel" required value={form.phone} onChange={set("phone")} placeholder="+225 07 00 00 00 00" /></Field>
+                <Field label={t("Nom *")} error={fieldError(err, "name")}><input className="input" required value={form.name} onChange={set("name")} placeholder="Aïcha Koné" /></Field>
+                <Field label={t("Téléphone *")} error={fieldError(err, "phone")}><input className="input" type="tel" required value={form.phone} onChange={set("phone")} placeholder="+225 07 00 00 00 00" /></Field>
               </div>
-              <Field label="Budget *" error={fieldError(err, "budget")}><input className="input" required inputMode="numeric" value={form.budget} onChange={set("budget")} placeholder="30 000 FCFA" /></Field>
-              <Field label="Description du cadeau *" error={fieldError(err, "description")}>
-                <textarea className="input" required value={form.description} onChange={set("description")} placeholder="Un coffret de thé pour ma mère, avec une tasse en céramique et un petit mot manuscrit. Elle aime les couleurs douces." />
+              <Field label={t("Budget *")} error={fieldError(err, "budget")}><input className="input" required inputMode="numeric" value={form.budget} onChange={set("budget")} placeholder={formatPrice(30000)} /></Field>
+              <Field label={t("Description du cadeau *")} error={fieldError(err, "description")}>
+                <textarea className="input" required value={form.description} onChange={set("description")} placeholder={t("Un coffret de thé pour ma mère, avec une tasse en céramique et un petit mot manuscrit. Elle aime les couleurs douces.")} />
               </Field>
-              <p className="note">* Champs obligatoires. Vos coordonnées servent uniquement au suivi de votre demande.</p>
+              <p className="note">{t("* Champs obligatoires. Vos coordonnées servent uniquement au suivi de votre demande.")}</p>
               <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
-              <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Envoi…" : "Envoyer ma demande"}</button>
-              <p className="note">Nous vous recontacterons pour préciser les possibilités. Cette demande n'est pas une commande.</p>
+              <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Envoi…") : t("Envoyer ma demande")}</button>
+              <p className="note">{t("Nous vous recontacterons pour préciser les possibilités. Cette demande n'est pas une commande.")}</p>
             </div>
           </form>
         )}
 
         <div>
-          <h2 className="h2" style={{ fontSize: 30 }}>Et pour la touche finale…</h2>
-          <p className="muted" style={{ fontSize: 14, marginTop: 14 }}>Des modèles d'exemple à choisir selon l'occasion. Le soin du détail, sans en faire trop.</p>
-          <img className="photo wrap-hero" src={hero} alt="Emballage sélectionné" />
+          <h2 className="h2" style={{ fontSize: 30 }}>{t("Et pour la touche finale…")}</h2>
+          <p className="muted" style={{ fontSize: 14, marginTop: 14 }}>{t("Des modèles d'exemple à choisir selon l'occasion. Le soin du détail, sans en faire trop.")}</p>
+          <img className="photo wrap-hero" src={hero} alt={t("Emballage sélectionné")} />
           <WrapPicker value={wrap} onChange={setWrap} />
         </div>
       </div>

@@ -72,7 +72,7 @@ class ListController extends Controller
         ]);
 
         if (! empty($data['gift_id'])) {
-            abort_if($list->items()->where('gift_id', $data['gift_id'])->exists(), 422, 'Ce cadeau est déjà dans la liste.');
+            abort_if($list->items()->where('gift_id', $data['gift_id'])->exists(), 422, __('Ce cadeau est déjà dans la liste.'));
             $item = $list->items()->create(['gift_id' => $data['gift_id']]);
         } else {
             $preview = $this->preview($data['url']);
@@ -124,12 +124,12 @@ class ListController extends Controller
             'event_date' => ['nullable', 'date'],
             'access_code' => ['nullable', 'string', 'max:20'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
-        ], ['image.max' => "L'image ne doit pas dépasser 5 Mo."]);
+        ], ['image.max' => __("L'image ne doit pas dépasser 5 Mo.")]);
     }
 
     private function authorizeOwner(Request $request, GiftList $list): void
     {
-        abort_unless($list->owner_id === $request->user()->id, 403, "Cette liste ne vous appartient pas.");
+        abort_unless($list->owner_id === $request->user()->id, 403, __('Cette liste ne vous appartient pas.'));
     }
 
     public static function present(GiftList $list, bool $owner = true): array
@@ -160,7 +160,7 @@ class ListController extends Controller
     /** Aperçu automatique (Open Graph) d'une page produit. Silencieux en cas d'échec. */
     private function preview(string $url): array
     {
-        $out = ['name' => parse_url($url, PHP_URL_HOST) ?: 'Produit externe', 'image' => null, 'price' => null];
+        $out = ['name' => parse_url($url, PHP_URL_HOST) ?: __('Produit externe'), 'image' => null, 'price' => null];
         // Protection SSRF : uniquement http(s) vers une adresse publique
         $host = parse_url($url, PHP_URL_HOST);
         $scheme = parse_url($url, PHP_URL_SCHEME);

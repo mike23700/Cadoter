@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 
@@ -42,7 +43,7 @@ class TopBar extends StatelessWidget implements PreferredSizeWidget {
         leading: showBack && Navigator.canPop(context)
             ? IconButton(icon: const Icon(Icons.arrow_back, color: AppColors.dark), onPressed: () => Navigator.pop(context))
             : null,
-        title: Text(title, style: T.sans(15, weight: FontWeight.w600)),
+        title: Text(tr(title), style: T.sans(15, weight: FontWeight.w600)),
         actions: [IconButton(icon: const Icon(Icons.more_horiz, color: AppColors.dark), onPressed: onMore ?? () {})],
       );
 }
@@ -80,7 +81,7 @@ class AppBottomNav extends StatelessWidget {
                       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Icon(items[i].$1, size: 22, color: i == current ? AppColors.magenta : AppColors.gray),
                         const SizedBox(height: 4),
-                        Text(items[i].$2,
+                        Text(tr(items[i].$2),
                             style: T.sans(10,
                                 color: i == current ? AppColors.magenta : AppColors.gray,
                                 weight: i == current ? FontWeight.w600 : FontWeight.w400)),
@@ -112,7 +113,7 @@ class PrimaryButton extends StatelessWidget {
         child: loading
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.white))
             : Row(mainAxisSize: MainAxisSize.min, children: [
-                Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+                Flexible(child: Text(tr(label), overflow: TextOverflow.ellipsis)),
                 if (icon != null) ...[const SizedBox(width: 10), Icon(icon, size: 18)],
               ]),
       );
@@ -128,7 +129,7 @@ class SecondaryButton extends StatelessWidget {
   Widget build(BuildContext context) => OutlinedButton(
         onPressed: onPressed,
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Flexible(child: Text(label, overflow: TextOverflow.ellipsis)),
+          Flexible(child: Text(tr(label), overflow: TextOverflow.ellipsis)),
           if (icon != null) ...[const SizedBox(width: 10), Icon(icon, size: 18, color: AppColors.magenta)],
         ]),
       );
@@ -149,7 +150,7 @@ class Pill extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-            child: Text(label, style: T.sans(12, color: selected ? AppColors.white : AppColors.dark)),
+            child: Text(tr(label), style: T.sans(12, color: selected ? AppColors.white : AppColors.dark)),
           ),
         ),
       );
@@ -164,7 +165,7 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(color: ok ? AppColors.dispoBg : AppColors.cream, borderRadius: BorderRadius.circular(8)),
-        child: Text(label, style: T.sans(11, weight: FontWeight.w600, color: ok ? AppColors.dispoText : AppColors.gray)),
+        child: Text(tr(label), style: T.sans(11, weight: FontWeight.w600, color: ok ? AppColors.dispoText : AppColors.gray)),
       );
 }
 
@@ -257,7 +258,7 @@ class FieldLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(text, style: T.sans(12, weight: FontWeight.w600)));
+      Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(tr(text), style: T.sans(12, weight: FontWeight.w600)));
 }
 
 /// Champ de formulaire libellé (TextFormField).
@@ -298,7 +299,7 @@ class LabeledField extends StatelessWidget {
             validator: validator,
             autofillHints: autofill,
             style: T.sans(13),
-            decoration: InputDecoration(hintText: hint, errorText: errorText),
+            decoration: InputDecoration(hintText: hint == null ? null : tr(hint!), errorText: errorText),
           ),
         ]),
       );
@@ -322,7 +323,7 @@ class DropdownField extends StatelessWidget {
             isExpanded: true,
             icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.dark),
             style: T.sans(13),
-            items: items.map((e) => DropdownMenuItem(value: e, child: Text(display?.call(e) ?? e))).toList(),
+            items: items.map((e) => DropdownMenuItem(value: e, child: Text(display?.call(e) ?? tr(e)))).toList(),
             onChanged: onChanged,
           ),
         ]),
@@ -335,7 +336,7 @@ class Eyebrow extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Text(text.toUpperCase(), style: T.eyebrow(color: color));
+  Widget build(BuildContext context) => Text(tr(text).toUpperCase(), style: T.eyebrow(color: color));
 }
 
 class IllustrativeNote extends StatelessWidget {
@@ -343,7 +344,7 @@ class IllustrativeNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) =>
-      Text('Exemples de cadeaux · Prix et lieux illustratifs', style: T.sans(11, color: AppColors.gray));
+      Text(tr('Exemples de cadeaux · Prix et lieux illustratifs'), style: T.sans(11, color: AppColors.gray));
 }
 
 /// Encart crème/rose arrondi.
@@ -371,8 +372,8 @@ class ErrorRetry extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.all(kGutter),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(message, textAlign: TextAlign.center, style: T.sans(13, color: AppColors.gray)),
-          if (onRetry != null) TextButton(onPressed: onRetry, child: Text('Réessayer', style: T.sans(13, color: AppColors.magenta, weight: FontWeight.w600))),
+          Text(tr(message), textAlign: TextAlign.center, style: T.sans(13, color: AppColors.gray)),
+          if (onRetry != null) TextButton(onPressed: onRetry, child: Text(tr('Réessayer'), style: T.sans(13, color: AppColors.magenta, weight: FontWeight.w600))),
         ]),
       );
 }
@@ -386,7 +387,7 @@ class Loader extends StatelessWidget {
 }
 
 void toast(BuildContext context, String message) =>
-    ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(tr(message))));
 
 /// Charge des données de l'API avec états chargement / erreur.
 class ApiBuilder<D> extends StatefulWidget {

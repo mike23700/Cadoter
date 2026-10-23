@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatDate, formatPrice, GiftList, ItemStatus, ListItem } from "../api";
 import { Badge, Breadcrumb, ErrorBox, Field, fieldError, IllustrativeNote, Loading, Modal, Photo } from "../components";
 import { Icon } from "../icons";
+import { t, tn } from "../i18n";
 import { useApi, useStore } from "../store";
 
 const shareUrl = (code: string) => `${window.location.origin}/l/${code}`;
@@ -19,29 +20,29 @@ export default function Lists() {
 
   return (
     <div className="wrap">
-      <Breadcrumb items={[["Mon espace", "/listes"], ["Mes listes"]]} />
-      <h1 className="display page-title" style={{ fontSize: 52 }}>Vos envies, réunies et partagées.</h1>
+      <Breadcrumb items={[[t("Mon espace"), "/listes"], [t("Mes listes")]]} />
+      <h1 className="display page-title" style={{ fontSize: 52 }}>{t("Vos envies, réunies et partagées.")}</h1>
       <ErrorBox error={error} onRetry={reload} />
       {loading ? <Loading /> : (
         <div className="lists-layout">
           <aside className="lists-side">
             {lists?.map(l => (
               <button key={l.id} className={`list-tab ${l.id === list?.id ? "on" : ""}`} onClick={() => setParams({ id: String(l.id) })}>
-                <span className="eyebrow">Mes listes</span>
+                <span className="eyebrow">{t("Mes listes")}</span>
                 <h3>{l.title}</h3>
-                <p>{l.counts.total} cadeau{l.counts.total > 1 ? "x" : ""} · {l.counts.reserved} réservé{l.counts.reserved > 1 ? "s" : ""}</p>
+                <p>{tn(l.counts.total, "{n} cadeau", "{n} cadeaux")} · {tn(l.counts.reserved, "{n} réservé", "{n} réservés")}</p>
               </button>
             ))}
-            <CreateList occasions={meta?.occasions ?? []} onCreated={l => { setLists(ls => [l, ...(ls ?? [])]); setParams({ id: String(l.id) }); notify("Votre liste est prête. Ajoutez vos envies !"); }} />
+            <CreateList occasions={meta?.occasions ?? []} onCreated={l => { setLists(ls => [l, ...(ls ?? [])]); setParams({ id: String(l.id) }); notify(t("Votre liste est prête. Ajoutez vos envies !")); }} />
           </aside>
 
           {list ? <ListDetail key={list.id} list={list} onChange={replace} refresh={() => refresh(list.id)}
             onDeleted={() => { setLists(ls => (ls ?? []).filter(x => x.id !== list.id)); setParams({}); }} />
             : (
               <div className="panel rose share-box">
-                <h2>Bonjour {user?.name.split(" ")[0]}, créez votre première liste.</h2>
-                <p>Rassemblez vos envies de tous vos sites favoris, sans limite. Vos proches réservent pour éviter les doublons.</p>
-                <Link to="/cadeaux" className="link">Explorer les cadeaux →</Link>
+                <h2>{t("Bonjour {name}, créez votre première liste.", { name: user?.name.split(" ")[0] ?? "" })}</h2>
+                <p>{t("Rassemblez vos envies de tous vos sites favoris, sans limite. Vos proches réservent pour éviter les doublons.")}</p>
+                <Link to="/cadeaux" className="link">{t("Explorer les cadeaux →")}</Link>
               </div>
             )}
         </div>
@@ -59,7 +60,7 @@ function CreateList({ occasions, onCreated }: { occasions: string[]; onCreated: 
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (image && image.size > 5 * 1024 * 1024) return setErr(new ApiError("L'image ne doit pas dépasser 5 Mo.", 422, { image: ["L'image ne doit pas dépasser 5 Mo."] }));
+    if (image && image.size > 5 * 1024 * 1024) return setErr(new ApiError(t("L'image ne doit pas dépasser 5 Mo."), 422, { image: [t("L'image ne doit pas dépasser 5 Mo.")] }));
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     if (image) fd.append("image", image);
@@ -78,24 +79,24 @@ function CreateList({ occasions, onCreated }: { occasions: string[]; onCreated: 
 
   return (
     <form className="panel form" onSubmit={submit} style={{ padding: 22 }}>
-      <h2 className="h2" style={{ fontSize: 26 }}>Une nouvelle envie ?</h2>
-      <Field label="Titre *" error={fieldError(err, "title")}><input className="input" required maxLength={120} placeholder="Le nom de votre liste" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
-      <Field label="Description"><textarea className="input" placeholder="Un petit mot pour vos proches…" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
-      <Field label="Occasion *" error={fieldError(err, "occasion")}>
+      <h2 className="h2" style={{ fontSize: 26 }}>{t("Une nouvelle envie ?")}</h2>
+      <Field label={t("Titre *")} error={fieldError(err, "title")}><input className="input" required maxLength={120} placeholder={t("Le nom de votre liste")} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
+      <Field label={t("Description")}><textarea className="input" placeholder={t("Un petit mot pour vos proches…")} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
+      <Field label={t("Occasion *")} error={fieldError(err, "occasion")}>
         <select className="input" required value={form.occasion} onChange={e => setForm({ ...form, occasion: e.target.value })}>
-          <option value="" disabled>Choisir une occasion</option>
-          {occasions.map(o => <option key={o}>{o}</option>)}
+          <option value="" disabled>{t("Choisir une occasion")}</option>
+          {occasions.map(o => <option key={o} value={o}>{t(o)}</option>)}
         </select>
       </Field>
-      {form.occasion.startsWith("Décès") && <p className="note">Pour un deuil, une présentation sobre et un message de soutien seront privilégiés.</p>}
+      {form.occasion.startsWith("Décès") && <p className="note">{t("Pour un deuil, une présentation sobre et un message de soutien seront privilégiés.")}</p>}
       <div className="field">
         <button type="button" className="btn btn-outline btn-block" onClick={() => fileRef.current?.click()}>
-          {image ? image.name : "Ajouter une image"} <Icon name="image" size={18} className="price" />
+          {image ? image.name : t("Ajouter une image")} <Icon name="image" size={18} className="price" />
         </button>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg" hidden onChange={e => setImage(e.target.files?.[0] ?? null)} />
-        <em className={fieldError(err, "image") ? "field-error" : "note"}>{fieldError(err, "image") ?? "JPG, PNG · 5 Mo maximum"}</em>
+        <em className={fieldError(err, "image") ? "field-error" : "note"}>{fieldError(err, "image") ?? t("JPG, PNG · 5 Mo maximum")}</em>
       </div>
-      <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Création…" : "Créer la liste"}</button>
+      <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Création…") : t("Créer la liste")}</button>
     </form>
   );
 }
@@ -113,9 +114,9 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
       await api(`/lists/${list.id}/items`, { body: { url: url.match(/^https?:\/\//) ? url : `https://${url}` } });
       setUrl("");
       await refresh();
-      notify("Produit ajouté à votre liste.");
+      notify(t("Produit ajouté à votre liste."));
     } catch (e) {
-      notify(e instanceof ApiError ? (e.field("url") ?? e.message) : "Lien invalide.");
+      notify(e instanceof ApiError ? (e.field("url") ?? e.message) : t("Lien invalide."));
     } finally {
       setBusy(false);
     }
@@ -128,10 +129,10 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
   const remove = async (item: ListItem) => {
     await api(`/lists/${list.id}/items/${item.id}`, { method: "DELETE" });
     await refresh();
-    notify("Cadeau retiré de la liste.");
+    notify(t("Cadeau retiré de la liste."));
   };
   const copy = async () => {
-    try { await navigator.clipboard.writeText(shareUrl(list.code)); notify("Lien copié !"); }
+    try { await navigator.clipboard.writeText(shareUrl(list.code)); notify(t("Lien copié !")); }
     catch { notify(shareUrl(list.code)); }
   };
 
@@ -142,63 +143,63 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
         <div>
           <h2>{list.title}</h2>
           {list.description && <p>{list.description}</p>}
-          <p className="meta muted">{formatDate(list.event_date ?? list.created_at)} · {list.occasion}</p>
-          <button className="link" onClick={() => setEditing(true)}>Modifier le titre, la description ou l'image →</button>
+          <p className="meta muted">{formatDate(list.event_date ?? list.created_at)} · {t(list.occasion)}</p>
+          <button className="link" onClick={() => setEditing(true)}>{t("Modifier le titre, la description ou l'image →")}</button>
         </div>
       </div>
 
       <form className="panel" onSubmit={addLink} style={{ marginBottom: 28 }}>
-        <h3 style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 18, marginBottom: 16 }}>Un coup de cœur sur un autre site ?</h3>
-        <Field label="Lien du produit">
+        <h3 style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 18, marginBottom: 16 }}>{t("Un coup de cœur sur un autre site ?")}</h3>
+        <Field label={t("Lien du produit")}>
           <div className="link-form">
-            <input className="input" required placeholder="https://boutique.exemple/produit" value={url} onChange={e => setUrl(e.target.value)} />
-            <button className="btn btn-primary" disabled={busy}>{busy ? "Ajout…" : "Ajouter ce lien"}</button>
+            <input className="input" required placeholder={t("https://boutique.exemple/produit")} value={url} onChange={e => setUrl(e.target.value)} />
+            <button className="btn btn-primary" disabled={busy}>{busy ? t("Ajout…") : t("Ajouter ce lien")}</button>
           </div>
         </Field>
-        <p className="note" style={{ marginTop: 12 }}>Ajoutez des produits de tous vos sites favoris, sans limitation. Ou <Link to="/cadeaux" className="price">choisissez dans le catalogue</Link>.</p>
+        <p className="note" style={{ marginTop: 12 }}>{t("Ajoutez des produits de tous vos sites favoris, sans limitation. Ou")} <Link to="/cadeaux" className="price">{t("choisissez dans le catalogue")}</Link>.</p>
       </form>
 
       <IllustrativeNote />
       <div className="section-head" style={{ margin: "22px 0 4px" }}>
-        <b style={{ fontSize: 14 }}>Mes cadeaux</b>
-        <span className="small muted">{list.counts.available} disponible{list.counts.available > 1 ? "s" : ""} · {list.counts.reserved} réservé{list.counts.reserved > 1 ? "s" : ""}</span>
+        <b style={{ fontSize: 14 }}>{t("Mes cadeaux")}</b>
+        <span className="small muted">{tn(list.counts.available, "{n} disponible", "{n} disponibles")} · {tn(list.counts.reserved, "{n} réservé", "{n} réservés")}</span>
       </div>
-      {list.items.length === 0 && <div className="empty">Votre liste est vide pour le moment.</div>}
+      {list.items.length === 0 && <div className="empty">{t("Votre liste est vide pour le moment.")}</div>}
       {list.items.map(item => (
         <div key={item.id} className="list-row">
           {item.image_url ? <img src={item.image_url} alt="" /> : <div className="photo-empty thumb"><Icon name="gift" /></div>}
           <div>
             <h4>{item.gift_slug ? <Link to={`/cadeaux/${item.gift_slug}`}>{item.name}</Link> : item.external_url ? <a href={item.external_url} target="_blank" rel="noreferrer noopener">{item.name}</a> : item.name}</h4>
             <p>{[item.city, item.area, formatPrice(item.price, item.currency)].filter(Boolean).join(" · ")}</p>
-            {item.reserved_by_name && <p className="note">Réservé par {item.reserved_by_name}</p>}
+            {item.reserved_by_name && <p className="note">{t("Réservé par {name}", { name: item.reserved_by_name })}</p>}
           </div>
           <Badge status={item.status} />
           <MoreMenu items={[
-            ...(item.status !== "Disponible" ? [["Remettre disponible", () => setStatus(item, "Disponible")] as const] : []),
-            ...(item.status !== "Réservé" ? [["Marquer réservé", () => setStatus(item, "Réservé")] as const] : []),
-            ...(item.status !== "Indisponible" ? [["Marquer indisponible", () => setStatus(item, "Indisponible")] as const] : []),
-            ["Retirer de la liste", () => remove(item)] as const,
+            ...(item.status !== "Disponible" ? [[t("Remettre disponible"), () => setStatus(item, "Disponible")] as const] : []),
+            ...(item.status !== "Réservé" ? [[t("Marquer réservé"), () => setStatus(item, "Réservé")] as const] : []),
+            ...(item.status !== "Indisponible" ? [[t("Marquer indisponible"), () => setStatus(item, "Indisponible")] as const] : []),
+            [t("Retirer de la liste"), () => remove(item)] as const,
           ]} />
         </div>
       ))}
 
       <div className="panel rose share-box" style={{ marginTop: 24 }}>
-        <h2>Vos proches n'ont plus qu'à choisir.</h2>
-        <p>Ils réservent pour éviter les doublons. Une réservation n'est pas un achat.</p>
-        <Field label="Lien de partage">
+        <h2>{t("Vos proches n'ont plus qu'à choisir.")}</h2>
+        <p>{t("Ils réservent pour éviter les doublons. Une réservation n'est pas un achat.")}</p>
+        <Field label={t("Lien de partage")}>
           <div className="link-form">
             <input className="input" readOnly value={shareUrl(list.code).replace(/^https?:\/\//, "")} onFocus={e => e.target.select()} />
-            <button type="button" className="btn btn-primary" onClick={copy}>Copier le lien <Icon name="copy" size={18} /></button>
+            <button type="button" className="btn btn-primary" onClick={copy}>{t("Copier le lien")} <Icon name="copy" size={18} /></button>
           </div>
         </Field>
         <p className="note" style={{ marginTop: 12 }}>
-          <Icon name="lock" size={12} /> {list.is_locked ? <>Protégée par le code <b>{list.access_code}</b>.</> : "Lien public."}{" "}
-          <button className="price" onClick={() => setEditing(true)}>{list.is_locked ? "Modifier le code" : "Ajouter un code d'accès"}</button>
-          {" · "}<Link className="price" to={`/l/${list.code}`}>Voir comme un proche</Link>
+          <Icon name="lock" size={12} /> {list.is_locked ? <>{t("Protégée par le code")} <b>{list.access_code}</b>.</> : t("Lien public.")}{" "}
+          <button className="price" onClick={() => setEditing(true)}>{list.is_locked ? t("Modifier le code") : t("Ajouter un code d'accès")}</button>
+          {" · "}<Link className="price" to={`/l/${list.code}`}>{t("Voir comme un proche")}</Link>
         </p>
       </div>
 
-      {editing && <EditList list={list} onClose={() => setEditing(false)} onSaved={l => { onChange(l); setEditing(false); notify("Liste mise à jour."); }} onDeleted={onDeleted} />}
+      {editing && <EditList list={list} onClose={() => setEditing(false)} onSaved={l => { onChange(l); setEditing(false); notify(t("Liste mise à jour.")); }} onDeleted={onDeleted} />}
     </section>
   );
 }
@@ -214,7 +215,7 @@ function MoreMenu({ items }: { items: readonly (readonly [string, () => void])[]
   }, [open]);
   return (
     <div className="more" ref={ref}>
-      <button className="icon-btn" aria-label="Plus d'actions" aria-expanded={open} onClick={() => setOpen(o => !o)}><Icon name="more" /></button>
+      <button className="icon-btn" aria-label={t("Plus d'actions")} aria-expanded={open} onClick={() => setOpen(o => !o)}><Icon name="more" /></button>
       {open && (
         <div className="more-menu" role="menu">
           {items.map(([label, fn]) => <button key={label} role="menuitem" onClick={() => { setOpen(false); fn(); }}>{label}</button>)}
@@ -238,31 +239,31 @@ function EditList({ list, onClose, onSaved, onDeleted }: { list: GiftList; onClo
     try { onSaved(await api<GiftList>(`/lists/${list.id}/update`, { body: fd })); } catch (e) { setErr(e); }
   };
   const del = async () => {
-    if (!window.confirm(`Supprimer la liste « ${list.title} » ? Cette action est définitive.`)) return;
+    if (!window.confirm(t("Supprimer la liste « {title} » ? Cette action est définitive.", { title: list.title }))) return;
     await api(`/lists/${list.id}`, { method: "DELETE" });
     onDeleted();
   };
 
   return (
-    <Modal title="Modifier ma liste" onClose={onClose}>
+    <Modal title={t("Modifier ma liste")} onClose={onClose}>
       <form className="form" onSubmit={save}>
-        <Field label="Titre *" error={fieldError(err, "title")}><input className="input" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
-        <Field label="Description"><textarea className="input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
-        <Field label="Occasion *">
+        <Field label={t("Titre *")} error={fieldError(err, "title")}><input className="input" required value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
+        <Field label={t("Description")}><textarea className="input" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} /></Field>
+        <Field label={t("Occasion *")}>
           <select className="input" value={form.occasion} onChange={e => setForm({ ...form, occasion: e.target.value })}>
-            {(meta?.occasions ?? [list.occasion]).map(o => <option key={o}>{o}</option>)}
+            {(meta?.occasions ?? [list.occasion]).map(o => <option key={o} value={o}>{t(o)}</option>)}
           </select>
         </Field>
-        <Field label="Code d'accès (facultatif)" error={fieldError(err, "access_code")}>
-          <input className="input" maxLength={20} placeholder="Laisser vide pour un lien public" value={form.access_code} onChange={e => setForm({ ...form, access_code: e.target.value })} />
+        <Field label={t("Code d'accès (facultatif)")} error={fieldError(err, "access_code")}>
+          <input className="input" maxLength={20} placeholder={t("Laisser vide pour un lien public")} value={form.access_code} onChange={e => setForm({ ...form, access_code: e.target.value })} />
         </Field>
-        <Field label="Nouvelle image (JPG, PNG · 5 Mo max.)" error={fieldError(err, "image")}>
+        <Field label={t("Nouvelle image (JPG, PNG · 5 Mo max.)")} error={fieldError(err, "image")}>
           <input className="input" type="file" accept="image/png,image/jpeg" onChange={e => setImage(e.target.files?.[0] ?? null)} />
         </Field>
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
         <div className="btn-row">
-          <button type="button" className="btn btn-outline" onClick={del}>Supprimer la liste</button>
-          <button className="btn btn-primary">Enregistrer</button>
+          <button type="button" className="btn btn-outline" onClick={del}>{t("Supprimer la liste")}</button>
+          <button className="btn btn-primary">{t("Enregistrer")}</button>
         </div>
       </form>
     </Modal>

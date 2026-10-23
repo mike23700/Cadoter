@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'create_list_screen.dart';
@@ -59,12 +60,12 @@ class _MyListScreenState extends State<MyListScreen> {
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (!item.isAvailable) ListTile(leading: const Icon(Icons.undo), title: const Text('Remettre disponible'), onTap: () => Navigator.pop(ctx, 'Disponible')),
-          if (item.status != 'Réservé') ListTile(leading: const Icon(Icons.bookmark_outline), title: const Text('Marquer réservé'), onTap: () => Navigator.pop(ctx, 'Réservé')),
-          if (item.status != 'Indisponible') ListTile(leading: const Icon(Icons.block), title: const Text('Marquer indisponible'), onTap: () => Navigator.pop(ctx, 'Indisponible')),
+          if (!item.isAvailable) ListTile(leading: const Icon(Icons.undo), title: Text(tr('Remettre disponible')), onTap: () => Navigator.pop(ctx, 'Disponible')),
+          if (item.status != 'Réservé') ListTile(leading: const Icon(Icons.bookmark_outline), title: Text(tr('Marquer réservé')), onTap: () => Navigator.pop(ctx, 'Réservé')),
+          if (item.status != 'Indisponible') ListTile(leading: const Icon(Icons.block), title: Text(tr('Marquer indisponible')), onTap: () => Navigator.pop(ctx, 'Indisponible')),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: AppColors.error),
-            title: const Text('Retirer de la liste', style: TextStyle(color: AppColors.error)),
+            title: Text(tr('Retirer de la liste'), style: TextStyle(color: AppColors.error)),
             onTap: () => Navigator.pop(ctx, 'remove'),
           ),
         ]),
@@ -88,10 +89,10 @@ class _MyListScreenState extends State<MyListScreen> {
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(leading: const Icon(Icons.visibility_outlined), title: const Text('Voir comme un proche'), onTap: () => Navigator.pop(ctx, 'view')),
+          ListTile(leading: const Icon(Icons.visibility_outlined), title: Text(tr('Voir comme un proche')), onTap: () => Navigator.pop(ctx, 'view')),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: AppColors.error),
-            title: const Text('Supprimer la liste', style: TextStyle(color: AppColors.error)),
+            title: Text(tr('Supprimer la liste'), style: TextStyle(color: AppColors.error)),
             onTap: () => Navigator.pop(ctx, 'delete'),
           ),
         ]),
@@ -104,11 +105,11 @@ class _MyListScreenState extends State<MyListScreen> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Supprimer cette liste ?'),
-          content: Text('« ${_list!.title} » sera définitivement supprimée.'),
+          title: Text(tr('Supprimer cette liste ?')),
+          content: Text(tr('« {title} » sera définitivement supprimée.', {'title': _list!.title})),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Supprimer', style: TextStyle(color: AppColors.error))),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(tr('Annuler'))),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text(tr('Supprimer'), style: TextStyle(color: AppColors.error))),
           ],
         ),
       );
@@ -160,10 +161,10 @@ class _MyListScreenState extends State<MyListScreen> {
                   controller: _url,
                   keyboardType: TextInputType.url,
                   style: T.sans(13),
-                  decoration: const InputDecoration(hintText: 'https://boutique.exemple/produit'),
+                  decoration: InputDecoration(hintText: tr('https://boutique.exemple/produit')),
                 ),
                 const SizedBox(height: 12),
-                Text('Tous vos sites favoris, sans limitation de produits.', style: T.sans(11, color: AppColors.gray)),
+                Text(tr('Tous vos sites favoris, sans limitation de produits.'), style: T.sans(11, color: AppColors.gray)),
                 const SizedBox(height: 16),
                 _adding ? const Loader() : SecondaryButton('Ajouter ce lien', onPressed: _addLink),
                 const SizedBox(height: 26),
@@ -172,7 +173,7 @@ class _MyListScreenState extends State<MyListScreen> {
                 if (l.items.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Text('Votre liste est vide. Ajoutez un lien ou un cadeau du catalogue.', style: T.sans(13, color: AppColors.gray)),
+                    child: Text(tr('Votre liste est vide. Ajoutez un lien ou un cadeau du catalogue.'), style: T.sans(13, color: AppColors.gray)),
                   ),
                 for (final item in l.items)
                   Container(
@@ -188,7 +189,7 @@ class _MyListScreenState extends State<MyListScreen> {
                           const SizedBox(height: 6),
                           Text(formatPrice(item.price, item.currency), style: T.sans(12, color: AppColors.magenta)),
                           const SizedBox(height: 8),
-                          StatusBadge(item.status == 'Réservé' ? 'Réservé par ${item.reservedBy ?? 'un proche'}' : item.status, ok: item.isAvailable),
+                          StatusBadge(item.status == 'Réservé' ? tr('Réservé par {name}', {'name': item.reservedBy ?? tr('un proche')}) : item.status, ok: item.isAvailable),
                         ]),
                       ),
                       IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _itemAction(item)),
@@ -203,7 +204,7 @@ class _MyListScreenState extends State<MyListScreen> {
                 ),
                 if (l.isLocked) ...[
                   const SizedBox(height: 8),
-                  Text('Protégée par le code ${l.accessCode}', style: T.sans(11, color: AppColors.gray)),
+                  Text(tr('Protégée par le code {code}', {'code': l.accessCode}), style: T.sans(11, color: AppColors.gray)),
                 ],
                 const SizedBox(height: 18),
                 PrimaryButton('Copier le lien', icon: Icons.copy, onPressed: _copy),

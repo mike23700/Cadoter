@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -51,7 +52,7 @@ class _GiftScreenState extends State<GiftScreen> {
     setState(() => _busy = true);
     try {
       await Api.instance.post('/lists/$_listId/items', {'gift_id': gift.id});
-      if (mounted) toast(context, '« ${gift.name} » ajouté à votre liste.');
+      if (mounted) toast(context, tr('« {name} » ajouté à votre liste.', {'name': gift.name}));
     } on ApiException catch (e) {
       if (mounted) toast(context, e.message);
     } finally {
@@ -100,7 +101,7 @@ class _GiftScreenState extends State<GiftScreen> {
             else if (_lists.length == 1)
               Padding(
                 padding: const EdgeInsets.only(bottom: 14),
-                child: Text('Ajouter à : ${_lists.first.title}', style: T.sans(12, weight: FontWeight.w600)),
+                child: Text(tr('Ajouter à : {title}', {'title': _lists.first.title}), style: T.sans(12, weight: FontWeight.w600)),
               ),
             PrimaryButton('Ajouter à ma liste', icon: Icons.add, loading: _busy, onPressed: () => _add(gift)),
             const SizedBox(height: 12),
@@ -116,7 +117,7 @@ class _GiftScreenState extends State<GiftScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('La touche finale', style: T.sans(14, weight: FontWeight.w600)),
+                      Text(tr('La touche finale'), style: T.sans(14, weight: FontWeight.w600)),
                       const SizedBox(height: 6),
                       Text(_wrap!.detail, style: T.sans(12, color: AppColors.gray)),
                       const SizedBox(height: 6),
@@ -126,7 +127,7 @@ class _GiftScreenState extends State<GiftScreen> {
                               context, MaterialPageRoute(builder: (_) => WrappingScreen(selected: _wrap)));
                           if (w != null) setLocal(() => _wrap = w);
                         },
-                        child: Text('Choisir mon emballage →', style: T.sans(12, color: AppColors.magenta)),
+                        child: Text(tr('Choisir mon emballage →'), style: T.sans(12, color: AppColors.magenta)),
                       ),
                     ]),
                   ),

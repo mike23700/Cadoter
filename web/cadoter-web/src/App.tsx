@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { firstName } from "./api";
+import { t } from "./i18n";
+import { LangSwitch } from "./components";
 import { Icon, IconName } from "./icons";
 import { RequireAuth, useStore } from "./store";
 import Home from "./pages/Home";
@@ -25,14 +27,13 @@ const nav: [string, string][] = [
   ["/inspirations", "Inspirations"],
 ];
 
-const accountLinks: [IconName, string, string, string?][] = [
+const accountLinks: [IconName, string, string][] = [
   ["list", "Mes listes", "/listes"],
   ["clock", "Mon historique", "/commandes"],
   ["heart", "Mes favoris", "/favoris"],
   ["help", "FAQ", "/inspirations"],
   ["mail", "Nous contacter", "/personnalise"],
   ["share", "Nos réseaux sociaux", "/inspirations"],
-  ["globe", "Langue", "/", "Français"],
   ["shield", "Politique", "/"],
 ];
 
@@ -42,27 +43,31 @@ function AccountMenu({ onClose }: { onClose: () => void }) {
   if (!user) return null;
   return (
     <div className="account-menu" role="menu">
-      <h3>Bonjour, {firstName(user)}.</h3>
+      <h3>{t("Bonjour, {name}.", { name: firstName(user) })}</h3>
       <p className="mail">{user.email}</p>
       <div className="menu-list">
         {user.role === "admin" && (
-          <Link to="/admin" onClick={onClose} role="menuitem"><Icon name="shield" size={17} /><span className="grow">Administration</span><Icon name="chevron" size={14} /></Link>
+          <Link to="/admin" onClick={onClose} role="menuitem"><Icon name="shield" size={17} /><span className="grow">{t("Administration")}</span><Icon name="chevron" size={14} /></Link>
         )}
-        {accountLinks.map(([icon, label, to, extra]) => (
+        {accountLinks.map(([icon, label, to]) => (
           <Link key={label} to={to} onClick={onClose} role="menuitem">
             <Icon name={icon} size={17} />
-            <span className="grow">{label}</span>
-            {extra && <span className="extra">{extra}</span>}
+            <span className="grow">{t(label)}</span>
             <Icon name="chevron" size={14} />
           </Link>
         ))}
-        <button onClick={async () => { onClose(); await logout(); notify("À bientôt !"); nav("/"); }} role="menuitem" className="danger">
+        <div className="menu-lang">
+          <Icon name="globe" size={17} />
+          <span className="grow">{t("Langue")}</span>
+          <LangSwitch />
+        </div>
+        <button onClick={async () => { onClose(); await logout(); notify(t("À bientôt !")); nav("/"); }} role="menuitem" className="danger">
           <Icon name="logout" size={17} />
-          <span className="grow">Se déconnecter</span>
+          <span className="grow">{t("Se déconnecter")}</span>
           <Icon name="chevron" size={14} />
         </button>
       </div>
-      <p className="foot">Un espace pour retrouver vos envies et préparer les prochaines attentions.</p>
+      <p className="foot">{t("Un espace pour retrouver vos envies et préparer les prochaines attentions.")}</p>
     </div>
   );
 }
@@ -87,27 +92,27 @@ function Header() {
   return (
     <header className="header">
       <div className="wrap">
-        <Link to="/" className="logo" aria-label="CADOTER, accueil"><img src="/img/logo.png" alt="cadoter.com" /></Link>
+        <Link to="/" className="logo" aria-label={t("CADOTER, accueil")}><img src="/img/logo.png" alt="cadoter.com" /></Link>
         <nav className={`nav ${mobileNav ? "open" : ""}`}>
-          {nav.map(([to, label]) => <NavLink key={to} to={to} end={to === "/"}>{label}</NavLink>)}
+          {nav.map(([to, label]) => <NavLink key={to} to={to} end={to === "/"}>{t(label)}</NavLink>)}
         </nav>
         <div className="header-actions" ref={ref}>
-          <Link to="/favoris" className="icon-btn" aria-label="Mes favoris">
+          <Link to="/favoris" className="icon-btn" aria-label={t("Mes favoris")}>
             <Icon name="heart" size={22} />
             {favorites.length > 0 && <span className="count">{favorites.length}</span>}
           </Link>
           {user ? (
             <>
-              <button className="hello" aria-expanded={menu} onClick={() => setMenu(m => !m)}>Bonjour, {firstName(user)}</button>
-              <button className="icon-btn account-icon" aria-label="Mon compte" onClick={() => setMenu(m => !m)}><Icon name="user" /></button>
+              <button className="hello" aria-expanded={menu} onClick={() => setMenu(m => !m)}>{t("Bonjour, {name}", { name: firstName(user) })}</button>
+              <button className="icon-btn account-icon" aria-label={t("Mon compte")} onClick={() => setMenu(m => !m)}><Icon name="user" /></button>
             </>
           ) : (
             <>
-              <Link to="/connexion" className="hello">Se connecter</Link>
-              <Link to="/connexion" className="icon-btn account-icon" aria-label="Se connecter"><Icon name="user" /></Link>
+              <Link to="/connexion" className="hello">{t("Se connecter")}</Link>
+              <Link to="/connexion" className="icon-btn account-icon" aria-label={t("Se connecter")}><Icon name="user" /></Link>
             </>
           )}
-          <button className="icon-btn burger" aria-label="Menu" onClick={() => setMobileNav(o => !o)}>
+          <button className="icon-btn burger" aria-label={t("Menu")} onClick={() => setMobileNav(o => !o)}>
             <Icon name={mobileNav ? "close" : "menu"} />
           </button>
           {menu && <AccountMenu onClose={() => setMenu(false)} />}
@@ -122,10 +127,10 @@ function Footer() {
   const bottom = (
     <div className="footer-bar">
       <div className="wrap">
-        <span>© CADOTER · Maquette de démonstration · Produits, prix et lieux présentés à titre illustratif.</span>
+        <span>{t("© CADOTER · Maquette de démonstration · Produits, prix et lieux présentés à titre illustratif.")}</span>
         {pathname !== "/" && (
           <nav>
-            <Link to="/inspirations">FAQ</Link><Link to="/personnalise">Nous contacter</Link><Link to="/">Politique</Link><span>Français</span>
+            <Link to="/inspirations">{t("FAQ")}</Link><Link to="/personnalise">{t("Nous contacter")}</Link><Link to="/">{t("Politique")}</Link>
           </nav>
         )}
       </div>
@@ -136,10 +141,10 @@ function Footer() {
     <footer className="footer">
       <div className="footer-big">
         <div className="wrap">
-          <div className="brand"><img src="/img/logo.png" alt="cadoter.com" /><p>De petites attentions, de grands liens.</p></div>
-          <div><h4>Explorer</h4><ul><li><Link to="/cadeaux">Cadeaux</Link></li><li><Link to="/listes">Mes listes</Link></li><li><Link to="/inspirations">Inspirations</Link></li></ul></div>
-          <div><h4>À vos côtés</h4><ul><li><Link to="/inspirations">FAQ</Link></li><li><Link to="/personnalise">Nous contacter</Link></li><li><Link to="/inspirations">Nos réseaux sociaux</Link></li></ul></div>
-          <div><h4>Votre espace</h4><ul><li><Link to="/listes">Mon espace</Link></li><li>Langue : Français</li><li><Link to="/">Politique de confidentialité</Link></li></ul></div>
+          <div className="brand"><img src="/img/logo.png" alt="cadoter.com" /><p>{t("De petites attentions, de grands liens.")}</p></div>
+          <div><h4>{t("Explorer")}</h4><ul><li><Link to="/cadeaux">{t("Cadeaux")}</Link></li><li><Link to="/listes">{t("Mes listes")}</Link></li><li><Link to="/inspirations">{t("Inspirations")}</Link></li></ul></div>
+          <div><h4>{t("À vos côtés")}</h4><ul><li><Link to="/inspirations">{t("FAQ")}</Link></li><li><Link to="/personnalise">{t("Nous contacter")}</Link></li><li><Link to="/inspirations">{t("Nos réseaux sociaux")}</Link></li></ul></div>
+          <div><h4>{t("Votre espace")}</h4><ul><li><Link to="/listes">{t("Mon espace")}</Link></li><li className="footer-lang">{t("Langue")} <LangSwitch /></li><li><Link to="/">{t("Politique de confidentialité")}</Link></li></ul></div>
         </div>
       </div>
       {bottom}
@@ -183,7 +188,7 @@ export default function App() {
           <Route path="/inspirations" element={<Inspirations />} />
           <Route path="/inspirations/:slug" element={<ArticlePage />} />
           <Route path="/favoris" element={<RequireAuth><Favorites /></RequireAuth>} />
-          <Route path="*" element={<div className="wrap"><div className="empty" style={{ marginTop: 60 }}>Page introuvable. <Link className="link" to="/">Retour à l'accueil</Link></div></div>} />
+          <Route path="*" element={<div className="wrap"><div className="empty" style={{ marginTop: 60 }}>{t("Page introuvable.")} <Link className="link" to="/">{t("Retour à l'accueil")}</Link></div></div>} />
         </Routes>
       </main>
       <Footer />

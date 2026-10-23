@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -41,16 +42,16 @@ class _HomeScreenState extends State<HomeScreen> {
           Padding(
             padding: const EdgeInsets.fromLTRB(kGutter, 18, kGutter, 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Eyebrow(session.isLoggedIn ? 'Bonjour ${session.user!.firstName}' : 'Bienvenue'),
+              Eyebrow(session.isLoggedIn ? tr('Bonjour {name}', {'name': session.user!.firstName}) : 'Bienvenue'),
               const SizedBox(height: 14),
-              Text('À qui allez-vous faire plaisir ?', style: T.serif(34)),
+              Text(tr('À qui allez-vous faire plaisir ?'), style: T.serif(34)),
               const SizedBox(height: 22),
               TextField(
                 textInputAction: TextInputAction.search,
                 onSubmitted: (q) => _search(context, q: q),
                 style: T.sans(14),
                 decoration: InputDecoration(
-                  hintText: 'Une idée, une envie, un cadeau…',
+                  hintText: tr('Une idée, une envie, un cadeau…'),
                   prefixIcon: const Icon(Icons.search, color: AppColors.dark),
                   filled: true,
                   fillColor: AppColors.cream,
@@ -66,10 +67,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ]),
               const SizedBox(height: 32),
               Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(child: Text('Des idées qui font plaisir', style: T.serif(22))),
+                Expanded(child: Text(tr('Des idées qui font plaisir'), style: T.serif(22))),
                 GestureDetector(
                   onTap: () => session.goTab(1),
-                  child: Text('Tout voir', style: T.sans(12, color: AppColors.magenta, weight: FontWeight.w600)),
+                  child: Text(tr('Tout voir'), style: T.sans(12, color: AppColors.magenta, weight: FontWeight.w600)),
                 ),
               ]),
               const SizedBox(height: 14),
@@ -83,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     return ErrorRetry('${snap.error}', onRetry: () => setState(() => _gifts = _load()));
                   }
                   final gifts = snap.data!;
-                  if (gifts.isEmpty) return Text('Les premiers cadeaux arrivent bientôt.', style: T.sans(13, color: AppColors.gray));
+                  if (gifts.isEmpty) return Text(tr('Les premiers cadeaux arrivent bientôt.'), style: T.sans(13, color: AppColors.gray));
                   return GiftGrid(
                     gifts: gifts.take(4).toList(),
                     onTap: (g) => Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: g.slug))),
@@ -97,9 +98,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Icon(Icons.auto_awesome_outlined, color: AppColors.magenta),
                   const SizedBox(height: 14),
-                  Text('En panne d’inspiration ?', style: T.serif(26)),
+                  Text(tr('En panne d’inspiration ?'), style: T.serif(26)),
                   const SizedBox(height: 14),
-                  Text('L’assistante IA vous aide à trouver une attention personnelle.', style: T.sans(14)),
+                  Text(tr('L’assistante IA vous aide à trouver une attention personnelle.'), style: T.sans(14)),
                   const SizedBox(height: 18),
                   PrimaryButton('Trouver une idée', onPressed: () => session.goTab(3)),
                 ]),
@@ -108,18 +109,18 @@ class _HomeScreenState extends State<HomeScreen> {
               SecondaryButton('Créer et partager ma liste', onPressed: () => session.goTab(2)),
               const SizedBox(height: 34),
               Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Expanded(child: Text('CADOTER pour vous inspirer', style: T.serif(22))),
+                Expanded(child: Text(tr('CADOTER pour vous inspirer'), style: T.serif(22))),
                 GestureDetector(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BlogScreen())),
-                  child: Text('Le blog', style: T.sans(12, color: AppColors.magenta, weight: FontWeight.w600)),
+                  child: Text(tr('Le blog'), style: T.sans(12, color: AppColors.magenta, weight: FontWeight.w600)),
                 ),
               ]),
               const SizedBox(height: 18),
-              Text('Fête des pères, des mères, Noël : nos idées à lire.', style: T.sans(14, color: AppColors.gray)),
+              Text(tr('Fête des pères, des mères, Noël : nos idées à lire.'), style: T.sans(14, color: AppColors.gray)),
               const SizedBox(height: 18),
               GestureDetector(
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ArticleScreen(index: 3))),
-                child: Text('Soutenir un proche en deuil → Des attentions sobres et respectueuses, à son rythme.',
+                child: Text(tr('Soutenir un proche en deuil → Des attentions sobres et respectueuses, à son rythme.'),
                     style: T.sans(12, color: AppColors.gray)),
               ),
             ]),

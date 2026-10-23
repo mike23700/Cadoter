@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -69,13 +70,13 @@ class _CreateListScreenState extends State<CreateListScreen> {
       body: Form(
         key: _form,
         child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
-          Text('Une liste à votre image.', style: T.serif(32)),
+          Text(tr('Une liste à votre image.'), style: T.serif(32)),
           const SizedBox(height: 16),
-          Text('Rassemblez vos envies. Vos proches choisiront ce qui leur fait plaisir.', style: T.sans(14, color: AppColors.gray)),
+          Text(tr('Rassemblez vos envies. Vos proches choisiront ce qui leur fait plaisir.'), style: T.sans(14, color: AppColors.gray)),
           const SizedBox(height: 26),
           LabeledField(
             label: 'Titre de la liste *', controller: _title, hint: 'Mon anniversaire', errorText: _error?.field('title'),
-            validator: (v) => (v ?? '').trim().isEmpty ? 'Donnez un titre à votre liste.' : null,
+            validator: (v) => (v ?? '').trim().isEmpty ? tr('Donnez un titre à votre liste.') : null,
           ),
           LabeledField(label: 'Description', controller: _desc, maxLines: 3, hint: 'Quelques envies pour mes 30 ans…'),
           const FieldLabel('Image de la liste'),
@@ -95,7 +96,7 @@ class _CreateListScreenState extends State<CreateListScreen> {
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(_editing ? 'Changer l’image' : 'Ajouter une image', style: T.sans(14, weight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        Text('JPG ou PNG · 5 Mo maximum', style: T.sans(11, color: AppColors.gray)),
+                        Text(tr('JPG ou PNG · 5 Mo maximum'), style: T.sans(11, color: AppColors.gray)),
                       ]),
                     ]),
             ),
@@ -106,7 +107,7 @@ class _CreateListScreenState extends State<CreateListScreen> {
             for (final o in occasions) Pill(o, selected: _occasion == o, onTap: () => setState(() => _occasion = o)),
           ]),
           const SizedBox(height: 18),
-          Text('Pour un deuil, une présentation sobre et un message de soutien seront privilégiés. * Champ obligatoire.',
+          Text(tr('Pour un deuil, une présentation sobre et un message de soutien seront privilégiés. * Champ obligatoire.'),
               style: T.sans(11, color: AppColors.gray)),
           if (_editing) ...[
             const SizedBox(height: 22),

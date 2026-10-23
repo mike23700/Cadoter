@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -45,7 +46,7 @@ class _ListsScreenState extends State<ListsScreen> {
         color: AppColors.magenta,
         onRefresh: session.isLoggedIn ? _reload : () async {},
         child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
-          Text('Vos envies méritent d’être partagées.', style: T.serif(32)),
+          Text(tr('Vos envies méritent d’être partagées.'), style: T.serif(32)),
           const SizedBox(height: 22),
           Panel(
             child: Column(children: [
@@ -55,7 +56,7 @@ class _ListsScreenState extends State<ListsScreen> {
             ]),
           ),
           const SizedBox(height: 22),
-          Text('Tous vos sites marchands favoris, sans limite. Vos proches réservent pour éviter les doublons.',
+          Text(tr('Tous vos sites marchands favoris, sans limite. Vos proches réservent pour éviter les doublons.'),
               style: T.sans(14, color: AppColors.gray)),
           const SizedBox(height: 22),
           PrimaryButton('Créer une liste', icon: Icons.add, onPressed: () async {
@@ -71,7 +72,7 @@ class _ListsScreenState extends State<ListsScreen> {
             Panel(
               pink: true,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Connectez-vous pour retrouver vos listes.', style: T.sans(14, weight: FontWeight.w600)),
+                Text(tr('Connectez-vous pour retrouver vos listes.'), style: T.sans(14, weight: FontWeight.w600)),
                 const SizedBox(height: 14),
                 SecondaryButton('Se connecter', onPressed: () => ensureLoggedIn(context)),
               ]),
@@ -84,13 +85,13 @@ class _ListsScreenState extends State<ListsScreen> {
                 if (snap.hasError) return ErrorRetry('${snap.error}', onRetry: _reload);
                 final lists = snap.data!;
                 if (lists.isEmpty) {
-                  return Text('Vous n’avez pas encore de liste.', style: T.sans(13, color: AppColors.gray));
+                  return Text(tr('Vous n’avez pas encore de liste.'), style: T.sans(13, color: AppColors.gray));
                 }
                 return Column(children: [for (final l in lists) _ListCard(list: l, onChanged: _reload)]);
               },
             ),
           const SizedBox(height: 18),
-          Text('Un mariage, une naissance, une dot… ou une liste de soutien à un proche.', style: T.sans(12, color: AppColors.gray)),
+          Text(tr('Un mariage, une naissance, une dot… ou une liste de soutien à un proche.'), style: T.sans(12, color: AppColors.gray)),
         ]),
       ),
     );
@@ -101,7 +102,7 @@ class _ListsScreenState extends State<ListsScreen> {
         child: Row(children: [
           Icon(icon, color: AppColors.magenta, size: 22),
           const SizedBox(width: 14),
-          Text(label, style: T.sans(14, weight: FontWeight.w600)),
+          Text(tr(label), style: T.sans(14, weight: FontWeight.w600)),
         ]),
       );
 
@@ -111,11 +112,11 @@ class _ListsScreenState extends State<ListsScreen> {
     final code = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Ouvrir la liste d’un proche', style: T.serif(22)),
-        content: TextField(controller: ctrl, decoration: const InputDecoration(hintText: 'cadoter.com/l/aicha-anniversaire')),
+        title: Text(tr('Ouvrir la liste d’un proche'), style: T.serif(22)),
+        content: TextField(controller: ctrl, decoration: InputDecoration(hintText: tr('cadoter.com/l/aicha-anniversaire'))),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: const Text('Ouvrir')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Annuler'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text), child: Text(tr('Ouvrir'))),
         ],
       ),
     );
@@ -139,7 +140,7 @@ class _ListCard extends StatelessWidget {
           const SizedBox(height: 22),
           Text(list.title, style: T.serif(26)),
           const SizedBox(height: 14),
-          Text('${formatDate(list.eventDate ?? list.createdAt)} · ${list.total} cadeau${list.total > 1 ? 'x' : ''} · ${list.reserved} réservé${list.reserved > 1 ? 's' : ''}',
+          Text('${formatDate(list.eventDate ?? list.createdAt)} · ${trn(list.total, '{n} cadeau', '{n} cadeaux')} · ${trn(list.reserved, '{n} réservé', '{n} réservés')}',
               style: T.sans(13, color: AppColors.gray)),
           const SizedBox(height: 14),
           StatusBadge(list.isLocked ? 'Lien protégé' : 'Lien partagé'),

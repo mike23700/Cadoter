@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'api.dart';
+import 'i18n.dart';
 
 /// État global : utilisateur connecté, métadonnées du catalogue, favoris, onglet actif, langue.
 class Session extends ChangeNotifier {
@@ -22,7 +23,7 @@ class Session extends ChangeNotifier {
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
-    language = prefs.getString('language') ?? 'fr';
+    language = I18n.lang = prefs.getString('language') ?? 'fr';
     onboarded = prefs.getBool('onboarded') ?? false;
     await api.loadToken();
     await Future.wait([_loadMeta(), if (api.hasToken) _loadUser()]);
@@ -65,9 +66,12 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> setLanguage(String lang) async {
-    language = lang;
+    if (lang == language) return;
+    language = I18n.lang = lang;
     (await SharedPreferences.getInstance()).setString('language', lang);
+    if (isLoggedIn) api.put('/me', {'language': lang}).catchError((_) => null);
     notifyListeners();
+    I18n.rebuildAll();
   }
 
   Future<void> setOnboarded() async {
@@ -80,6 +84,8 @@ class Session extends ChangeNotifier {
     user = User.fromJson(res['user']);
     (await SharedPreferences.getInstance()).setString('user', jsonEncode(res['user']));
     await setOnboarded();
+    // La langue choisie dans l'application devient celle du compte
+    api.put('/me', {'language': language}).catchError((_) => null);
     await loadFavorites();
     notifyListeners();
   }

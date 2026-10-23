@@ -82,7 +82,7 @@ class GiftController extends Controller
             'is_active' => ['nullable', 'boolean'],
             'is_featured' => ['nullable', 'boolean'],
             'image' => [$creating ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], ['image.required' => 'Ajoutez une photo du cadeau.']);
+        ], ['image.required' => __('Ajoutez une photo du cadeau.')]);
         unset($data['image']);
 
         return $data;

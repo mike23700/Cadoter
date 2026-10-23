@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import 'auth_screens.dart';
@@ -105,7 +106,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                 child: Transform.translate(
                   offset: Offset(0, 12 * (1 - fade)),
                   child: Column(children: [
-                    Text('Le bonheur d’offrir.\nTout simplement.', textAlign: TextAlign.center, style: T.serif(30, height: 1.3)),
+                    Text(tr('Le bonheur d’offrir.\nTout simplement.'), textAlign: TextAlign.center, style: T.serif(30, height: 1.3)),
                     const SizedBox(height: 26),
                     Container(
                       width: 36,
@@ -122,7 +123,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               bottom: mq.padding.bottom + 40,
               child: Opacity(
                 opacity: fade,
-                child: Text('DES ATTENTIONS QUI NOUS RAPPROCHENT', textAlign: TextAlign.center, style: T.eyebrow()),
+                child: Text(tr('DES ATTENTIONS QUI NOUS RAPPROCHENT'), textAlign: TextAlign.center, style: T.eyebrow()),
               ),
             ),
           ]);

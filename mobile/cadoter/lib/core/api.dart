@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'i18n.dart';
+
 /// URL de l'API Laravel. Surcharge : `flutter run --dart-define=API_URL=http://192.168.1.10:8001/api`
 /// Par défaut : 10.0.2.2 = machine hôte vue depuis l'émulateur Android.
 String get apiUrl {
@@ -54,6 +56,7 @@ class Api {
 
   Map<String, String> _headers([Map<String, String>? extra]) => {
         'Accept': 'application/json',
+        'Accept-Language': I18n.lang,
         if (_token != null) 'Authorization': 'Bearer $_token',
         ...?extra,
       };
@@ -90,7 +93,7 @@ class Api {
     try {
       res = await call().timeout(timeout ?? const Duration(seconds: 20));
     } catch (_) {
-      throw ApiException('Impossible de joindre le serveur. Vérifiez votre connexion.');
+      throw ApiException(tr('Impossible de joindre le serveur. Vérifiez votre connexion.'));
     }
     if (res.statusCode == 204) return null;
     dynamic data;
@@ -106,7 +109,7 @@ class Api {
         (data['errors'] as Map).forEach((k, v) => errors['$k'] = List<String>.from(v as List));
       }
       throw ApiException(
-        data is Map && data['message'] is String ? data['message'] as String : 'Une erreur est survenue.',
+        data is Map && data['message'] is String ? data['message'] as String : tr('Une erreur est survenue.'),
         status: res.statusCode,
         errors: errors,
         data: data,
@@ -216,7 +219,7 @@ class ListItem {
         status: j['status'],
         giftId: j['gift_id'],
         giftSlug: j['gift_slug'],
-        name: j['name'] ?? 'Produit',
+        name: j['name'] ?? tr('Produit'),
         price: _int(j['price']),
         currency: j['currency'] ?? 'FCFA',
         city: j['city'],
@@ -329,10 +332,12 @@ class Suggestion {
 // ---------------------------------------------------------------- Formats
 
 String formatPrice(int? n, [String currency = 'FCFA']) {
-  if (n == null) return 'Prix à confirmer';
-  final s = n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ' ');
+  if (n == null) return tr('Prix à confirmer');
+  final sep = I18n.lang == 'en' ? ',' : ' ';
+  final s = n.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => sep);
   return '$s $currency';
 }
 
 const _months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-String formatDate(DateTime d) => '${d.day} ${_months[d.month - 1]}';
+const _monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+String formatDate(DateTime d) => I18n.lang == 'en' ? '${d.day} ${_monthsEn[d.month - 1]}' : '${d.day} ${_months[d.month - 1]}';

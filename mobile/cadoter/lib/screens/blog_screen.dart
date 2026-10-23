@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 
@@ -48,9 +49,9 @@ class _BlogScreenState extends State<BlogScreen> {
       appBar: const TopBar('Inspirations'),
       bottomNavigationBar: const AppBottomNav(current: 0),
       body: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
-        Text('CADOTER pour vous inspirer.', style: T.serif(32)),
+        Text(tr('CADOTER pour vous inspirer.'), style: T.serif(32)),
         const SizedBox(height: 16),
-        Text('Des idées, des histoires et l’envie de faire plaisir, à votre façon.', style: T.sans(14, color: AppColors.gray)),
+        Text(tr('Des idées, des histoires et l’envie de faire plaisir, à votre façon.'), style: T.sans(14, color: AppColors.gray)),
         const SizedBox(height: 22),
         Wrap(spacing: 8, runSpacing: 10, children: [for (final t in tags) Pill(t, selected: t == _tag, onTap: () => setState(() => _tag = t))]),
         const SizedBox(height: 26),
@@ -62,11 +63,11 @@ class _BlogScreenState extends State<BlogScreen> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 NetImage(articles[i].image, aspect: 354 / 190),
                 const SizedBox(height: 16),
-                Eyebrow('${articles[i].tag} · ${articles[i].minutes} min', color: AppColors.magenta),
+                Eyebrow('${tr(articles[i].tag)} · ${articles[i].minutes} min', color: AppColors.magenta),
                 const SizedBox(height: 10),
-                Text(articles[i].title, style: T.serif(24)),
+                Text(tr(articles[i].title), style: T.serif(24)),
                 const SizedBox(height: 10),
-                Text('Lire l’article →', style: T.sans(12, color: AppColors.gray)),
+                Text(tr('Lire l’article →'), style: T.sans(12, color: AppColors.gray)),
               ]),
             ),
           ),
@@ -85,13 +86,13 @@ class ArticleScreen extends StatelessWidget {
     return Scaffold(
       appBar: const TopBar('Inspirations'),
       body: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 32), children: [
-        Eyebrow('${a.tag} · ${a.minutes} min de lecture', color: AppColors.magenta),
+        Eyebrow('${tr(a.tag)} · ${tr('{n} min de lecture', {'n': a.minutes})}', color: AppColors.magenta),
         const SizedBox(height: 12),
-        Text(a.title, style: T.serif(32)),
+        Text(tr(a.title), style: T.serif(32)),
         const SizedBox(height: 22),
         NetImage(a.image, aspect: 354 / 200),
         const SizedBox(height: 24),
-        for (final p in a.body) Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(p, style: T.sans(15, height: 1.65))),
+        for (final p in a.body) Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(tr(p), style: T.sans(15, height: 1.65))),
       ]),
     );
   }

@@ -32,14 +32,14 @@ class OrderController extends Controller
 
         $order = DB::transaction(function () use ($data, $request) {
             $gift = Gift::whereKey($data['gift_id'])->lockForUpdate()->firstOrFail();
-            abort_unless($gift->available, 409, "Ce cadeau n'est plus disponible.");
+            abort_unless($gift->available, 409, __("Ce cadeau n'est plus disponible."));
             $qty = $data['quantity'] ?? 1;
-            abort_if($gift->stock !== null && $gift->stock < $qty, 409, 'Stock insuffisant.');
+            abort_if($gift->stock !== null && $gift->stock < $qty, 409, __('Stock insuffisant.'));
 
             if (! empty($data['list_item_id'])) {
                 $item = ListItem::whereKey($data['list_item_id'])->lockForUpdate()->first();
-                abort_if(! $item || $item->gift_id !== $gift->id, 422, 'Élément de liste invalide.');
-                abort_if($item->status === 'Indisponible', 409, "Ce cadeau n'est plus disponible.");
+                abort_if(! $item || $item->gift_id !== $gift->id, 422, __('Élément de liste invalide.'));
+                abort_if($item->status === 'Indisponible', 409, __("Ce cadeau n'est plus disponible."));
             }
 
             $wrapPrice = ! empty($data['wrapping_id']) ? Wrapping::find($data['wrapping_id'])->price : 0;
@@ -60,7 +60,7 @@ class OrderController extends Controller
 
         return response()->json([
             'order' => $order,
-            'message' => 'Commande enregistrée. Vous recevrez une demande de paiement Mobile Money sur le '.$order->customer_phone.'.',
+            'message' => __('Commande enregistrée. Vous recevrez une demande de paiement Mobile Money sur le :phone.', ['phone' => $order->customer_phone]),
         ], 201);
     }
 
@@ -82,6 +82,6 @@ class OrderController extends Controller
 
         $req = CustomRequest::create([...$data, 'user_id' => $request->user('sanctum')?->id]);
 
-        return response()->json(['request' => $req, 'message' => 'Merci ! Nous vous recontactons pour préciser les possibilités.'], 201);
+        return response()->json(['request' => $req, 'message' => __('Merci ! Nous vous recontactons pour préciser les possibilités.')], 201);
     }
 }

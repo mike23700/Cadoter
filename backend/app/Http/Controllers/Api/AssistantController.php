@@ -63,17 +63,18 @@ class AssistantController extends Controller
         return response()->json([
             'criteria' => $data,
             'suggestions' => $gifts,
-            'disclaimer' => 'Exemples de suggestions, sans garantie de disponibilité. Prix et disponibilité à confirmer auprès du marchand.',
+            'disclaimer' => __('Exemples de suggestions, sans garantie de disponibilité. Prix et disponibilité à confirmer auprès du marchand.'),
         ]);
     }
 
     private function reason(Gift $g, array $d, array $matches): string
     {
-        $pronoun = in_array($d['gender'], ['Femme', 'Fille'], true) ? 'elle' : 'il';
+        $female = in_array($d['gender'], ['Femme', 'Fille'], true);
         if ($matches) {
-            return "En lien avec ce qu'{$pronoun} aime (".implode(', ', array_slice($matches, 0, 3)).') : une attention personnelle, dans votre budget.';
+            return __($female ? "En lien avec ce qu'elle aime (:likes) : une attention personnelle, dans votre budget." : "En lien avec ce qu'il aime (:likes) : une attention personnelle, dans votre budget.",
+                ['likes' => implode(', ', array_slice($matches, 0, 3))]);
         }
 
-        return "Une attention pensée pour cette personne, idéale pour l'occasion (".Str::lower($d['event']).'), sans dépasser le budget.';
+        return __("Une attention pensée pour cette personne, idéale pour l'occasion (:event), sans dépasser le budget.", ['event' => Str::lower(__($d['event']))]);
     }
 }

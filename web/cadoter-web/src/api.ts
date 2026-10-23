@@ -1,4 +1,6 @@
 // Client de l'API Laravel (Sanctum, jeton Bearer).
+import { getLang, locale, t } from "./i18n";
+
 export const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8001/api";
 const TOKEN_KEY = "cadoter:token";
 
@@ -97,9 +99,9 @@ export const token = {
 type Body = Record<string, unknown> | FormData | undefined;
 
 export async function api<T>(path: string, opts: { method?: string; body?: Body; headers?: Record<string, string> } = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json", ...opts.headers };
-  const t = token.get();
-  if (t) headers.Authorization = `Bearer ${t}`;
+  const headers: Record<string, string> = { Accept: "application/json", "Accept-Language": getLang(), ...opts.headers };
+  const tok = token.get();
+  if (tok) headers.Authorization = `Bearer ${tok}`;
   let body: BodyInit | undefined;
   if (opts.body instanceof FormData) body = opts.body;
   else if (opts.body) { body = JSON.stringify(opts.body); headers["Content-Type"] = "application/json"; }
@@ -108,13 +110,13 @@ export async function api<T>(path: string, opts: { method?: string; body?: Body;
   try {
     res = await fetch(`${API_URL}${path}`, { method: opts.method ?? (body ? "POST" : "GET"), headers, body });
   } catch {
-    throw new ApiError("Impossible de joindre le serveur. Vérifiez que l'API est démarrée.", 0);
+    throw new ApiError(t("Impossible de joindre le serveur. Vérifiez que l'API est démarrée."), 0);
   }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 401) token.set(null);
-    throw new ApiError(data?.message ?? "Une erreur est survenue.", res.status, data?.errors ?? {}, data);
+    throw new ApiError(data?.message ?? t("Une erreur est survenue."), res.status, data?.errors ?? {}, data);
   }
   return data as T;
 }
@@ -127,12 +129,15 @@ export const qs = (params: Record<string, string | number | boolean | undefined 
 };
 
 export const formatPrice = (n: number | null | undefined, currency = "FCFA") =>
-  n == null ? "Prix à confirmer" : `${n.toLocaleString("fr-FR").replace(/[  ]/g, " ")} ${currency}`;
+  n == null ? t("Prix à confirmer") : `${n.toLocaleString(locale()).replace(/[  ]/g, " ")} ${currency}`;
 
 export const giftPlace = (g: { city: string | null; area: string | null }) => [g.city, g.area].filter(Boolean).join(" · ");
 
 export const formatDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "";
+  iso ? new Date(iso).toLocaleDateString(locale(), { day: "numeric", month: "long" }) : "";
+
+/** Date et heure courtes (« 23/10/2026 10:09 »). */
+export const formatDateTime = (iso: string) => new Date(iso).toLocaleString(locale(), { dateStyle: "short", timeStyle: "short" });
 
 /** Prénom pour « Bonjour, Aïcha ». */
 export const firstName = (u: User | null) => u?.name.split(" ")[0] ?? "";

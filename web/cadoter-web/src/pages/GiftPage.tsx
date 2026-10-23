@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError, formatPrice, Gift, GiftList, giftPlace } from "../api";
 import { Badge, Breadcrumb, ErrorBox, IllustrativeNote, Loading, Photo } from "../components";
 import { Icon } from "../icons";
+import { t } from "../i18n";
 import { useApi, useStore } from "../store";
 
 export default function GiftPage() {
@@ -19,7 +20,7 @@ export default function GiftPage() {
 
   if (loading) return <div className="wrap"><Loading /></div>;
   if (error || !gift) {
-    return <div className="wrap"><Breadcrumb items={[["Accueil", "/"], ["Cadeaux", "/cadeaux"]]} /><ErrorBox error={error?.status === 404 ? "Ce cadeau n'existe plus." : error} /></div>;
+    return <div className="wrap"><Breadcrumb items={[[t("Accueil"), "/"], [t("Cadeaux"), "/cadeaux"]]} /><ErrorBox error={error?.status === 404 ? t("Ce cadeau n'existe plus.") : error} /></div>;
   }
 
   const wrap = meta?.wrappings[0];
@@ -32,9 +33,9 @@ export default function GiftPage() {
     setBusy(true);
     try {
       await api(`/lists/${listId}/items`, { body: { gift_id: gift.id } });
-      notify(`« ${gift.name} » ajouté à votre liste.`);
+      notify(t("« {name} » ajouté à votre liste.", { name: gift.name }));
     } catch (e) {
-      notify(e instanceof ApiError ? e.message : "Impossible d'ajouter ce cadeau.");
+      notify(e instanceof ApiError ? e.message : t("Impossible d'ajouter ce cadeau."));
     } finally {
       setBusy(false);
     }
@@ -42,14 +43,14 @@ export default function GiftPage() {
 
   return (
     <div className="wrap">
-      <Breadcrumb items={[["Accueil", "/"], ["Cadeaux", "/cadeaux"], [gift.name]]} />
+      <Breadcrumb items={[[t("Accueil"), "/"], [t("Cadeaux"), "/cadeaux"], [gift.name]]} />
       <div className="product">
         <div>
           <Photo className="main-photo" src={photos[photo] ?? gift.image_url} alt={gift.name} />
           {photos.length > 1 && (
             <div className="thumbs">
               {photos.map((src, i) => (
-                <button key={src} className={i === photo ? "on" : ""} onClick={() => setPhoto(i)} aria-label={`Photo ${i + 1}`}><img src={src} alt="" /></button>
+                <button key={src} className={i === photo ? "on" : ""} onClick={() => setPhoto(i)} aria-label={t("Photo {n}", { n: i + 1 })}><img src={src} alt="" /></button>
               ))}
             </div>
           )}
@@ -62,38 +63,38 @@ export default function GiftPage() {
           <p className="big-price">{formatPrice(gift.price, gift.currency)}</p>
           <p className="place"><Icon name="pin" />{giftPlace(gift)}{gift.shop && ` · ${gift.shop}`}</p>
           {gift.description && <p className="lead" style={{ fontSize: 16 }}>{gift.description}</p>}
-          <p className="small">À vérifier auprès du marchand : disponibilité, retrait et modalités de livraison.</p>
+          <p className="small">{t("À vérifier auprès du marchand : disponibilité, retrait et modalités de livraison.")}</p>
 
           {user && lists && lists.length > 0 ? (
             <label className="field">
-              <span>Ajouter à une liste</span>
+              <span>{t("Ajouter à une liste")}</span>
               <select className="input" value={listId} onChange={e => setListId(e.target.value)}>
                 {lists.map(l => <option key={l.id} value={l.id}>{l.title}</option>)}
               </select>
             </label>
           ) : (
-            <p className="small muted">{user ? "Créez d'abord une liste pour y ajouter ce cadeau." : "Connectez-vous pour l'ajouter à une liste."}</p>
+            <p className="small muted">{user ? t("Créez d'abord une liste pour y ajouter ce cadeau.") : t("Connectez-vous pour l'ajouter à une liste.")}</p>
           )}
 
           <div className="btn-row">
             <button className="btn btn-primary" onClick={addToList} disabled={busy}>
-              {user && !lists?.length ? "Créer une liste" : "Ajouter à ma liste"} <Icon name="plus" size={18} />
+              {user && !lists?.length ? t("Créer une liste") : t("Ajouter à ma liste")} <Icon name="plus" size={18} />
             </button>
             <button className="btn btn-outline" onClick={() => toggleFavorite(gift)} aria-pressed={isFav}>
-              {isFav ? "Dans mes favoris" : "Mes favoris"} <Icon name="heart" size={18} className={isFav ? "price fill" : "price"} />
+              {isFav ? t("Dans mes favoris") : t("Mes favoris")} <Icon name="heart" size={18} className={isFav ? "price fill" : "price"} />
             </button>
           </div>
           <Link to={`/commander/${gift.slug}`} className={`btn btn-outline btn-block ${gift.available ? "" : "disabled"}`} aria-disabled={!gift.available}>
-            Commander ce cadeau
+            {t("Commander ce cadeau")}
           </Link>
 
           {wrap && (
             <div className="panel final-touch">
               {wrap.image_url && <img src={wrap.image_url} alt="" />}
               <div>
-                <h3>La touche finale</h3>
+                <h3>{t("La touche finale")}</h3>
                 <p>{wrap.name}{wrap.detail && ` · ${wrap.detail}`}.</p>
-                <Link to={`/commander/${gift.slug}`} className="link">Choisir ce modèle ou en découvrir d'autres →</Link>
+                <Link to={`/commander/${gift.slug}`} className="link">{t("Choisir ce modèle ou en découvrir d'autres →")}</Link>
               </div>
             </div>
           )}

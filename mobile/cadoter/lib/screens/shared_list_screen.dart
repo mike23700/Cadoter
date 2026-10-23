@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -38,9 +39,9 @@ class _SharedListScreenState extends State<SharedListScreen> {
     } on ApiException catch (e) {
       setState(() {
         if (e.status == 423) {
-          _lockedTitle = (e.data is Map ? e.data['title'] : null) ?? 'Liste protégée';
+          _lockedTitle = (e.data is Map ? e.data['title'] : null) ?? tr('Liste protégée');
         } else {
-          _error = e.status == 404 ? 'Cette liste n’existe pas ou a été supprimée.' : e;
+          _error = e.status == 404 ? tr('Cette liste n’existe pas ou a été supprimée.') : e;
         }
       });
     }
@@ -51,9 +52,9 @@ class _SharedListScreenState extends State<SharedListScreen> {
     final code = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(_lockedTitle ?? 'Liste protégée', style: T.serif(22)),
-        content: TextField(controller: ctrl, autofocus: true, decoration: const InputDecoration(hintText: 'Code d’accès')),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Ouvrir'))],
+        title: Text(_lockedTitle ?? tr('Liste protégée'), style: T.serif(22)),
+        content: TextField(controller: ctrl, autofocus: true, decoration: InputDecoration(hintText: tr('Code d’accès'))),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(tr('Ouvrir')))],
       ),
     );
     if (code == null || code.isEmpty) return;
@@ -68,15 +69,15 @@ class _SharedListScreenState extends State<SharedListScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Je réserve ce cadeau', style: T.serif(22)),
+        title: Text(tr('Je réserve ce cadeau'), style: T.serif(22)),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Les autres proches verront que « ${item.name} » est déjà choisi.', style: T.sans(13, color: AppColors.gray)),
+          Text(tr('Les autres proches verront que « {name} » est déjà choisi.', {'name': item.name}), style: T.sans(13, color: AppColors.gray)),
           const SizedBox(height: 14),
-          TextField(controller: ctrl, decoration: const InputDecoration(hintText: 'Votre prénom')),
+          TextField(controller: ctrl, decoration: InputDecoration(hintText: tr('Votre prénom'))),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Réserver')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('Annuler'))),
+          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(tr('Réserver'))),
         ],
       ),
     );
@@ -97,9 +98,9 @@ class _SharedListScreenState extends State<SharedListScreen> {
   @override
   Widget build(BuildContext context) {
     final l = _list;
-    final first = l?.ownerName?.split(' ').first ?? 'votre proche';
+    final first = l?.ownerName?.split(' ').first ?? tr('votre proche');
     return Scaffold(
-      appBar: TopBar(l != null ? 'La liste d’$first' : 'Liste partagée'),
+      appBar: TopBar(l != null ? tr('La liste d’{name}', {'name': first}) : 'Liste partagée'),
       body: _lockedTitle != null
           ? Padding(
               padding: const EdgeInsets.all(kGutter),
@@ -108,7 +109,7 @@ class _SharedListScreenState extends State<SharedListScreen> {
                 const SizedBox(height: 16),
                 Text(_lockedTitle!, style: T.serif(28), textAlign: TextAlign.center),
                 const SizedBox(height: 12),
-                Text('Cette liste est protégée par un code d’accès.', style: T.sans(13, color: AppColors.gray)),
+                Text(tr('Cette liste est protégée par un code d’accès.'), style: T.sans(13, color: AppColors.gray)),
                 const SizedBox(height: 22),
                 PrimaryButton('Saisir le code', onPressed: _askCode),
               ]),
@@ -118,7 +119,7 @@ class _SharedListScreenState extends State<SharedListScreen> {
               : ListView(padding: const EdgeInsets.fromLTRB(kGutter, 8, kGutter, 28), children: [
                   NetImage(l.imageUrl, aspect: 354 / 175),
                   const SizedBox(height: 30),
-                  Text('Les envies d’$first', style: T.serif(32)),
+                  Text(tr('Les envies d’{name}', {'name': first}), style: T.serif(32)),
                   if (l.description != null) ...[
                     const SizedBox(height: 16),
                     Text('« ${l.description} »', style: T.sans(14, color: AppColors.gray)),
@@ -127,9 +128,9 @@ class _SharedListScreenState extends State<SharedListScreen> {
                   Panel(
                     padding: const EdgeInsets.all(16),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Choisissez une attention.', style: T.sans(14, weight: FontWeight.w600)),
+                      Text(tr('Choisissez une attention.'), style: T.sans(14, weight: FontWeight.w600)),
                       const SizedBox(height: 8),
-                      Text('Réserver prévient les autres proches. Cela ne vaut pas achat : vous achetez ensuite auprès du marchand.',
+                      Text(tr('Réserver prévient les autres proches. Cela ne vaut pas achat : vous achetez ensuite auprès du marchand.'),
                           style: T.sans(12)),
                     ]),
                   ),
@@ -164,13 +165,13 @@ class _SharedListScreenState extends State<SharedListScreen> {
                                 context, MaterialPageRoute(builder: (_) => OrderScreen(gift: gift, listItemId: item.id)));
                             if (done == true) _load();
                           },
-                          child: Text('ou l’offrir directement →', style: T.sans(12, color: AppColors.magenta)),
+                          child: Text(tr('ou l’offrir directement →'), style: T.sans(12, color: AppColors.magenta)),
                         ),
                     ] else
-                      Text('Un proche a déjà choisi ce cadeau.', style: T.sans(12, color: AppColors.gray)),
+                      Text(tr('Un proche a déjà choisi ce cadeau.'), style: T.sans(12, color: AppColors.gray)),
                     const SizedBox(height: 10),
                   ],
-                  if (l.items.isEmpty) Text('$first n’a pas encore ajouté de cadeau.', style: T.sans(13, color: AppColors.gray)),
+                  if (l.items.isEmpty) Text(tr('{name} n’a pas encore ajouté de cadeau.', {'name': first}), style: T.sans(13, color: AppColors.gray)),
                 ]),
     );
   }

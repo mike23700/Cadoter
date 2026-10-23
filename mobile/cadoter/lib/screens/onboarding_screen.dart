@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -42,7 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(children: [
                 const Eyebrow('Découvrir CADOTER'),
                 const Spacer(),
-                GestureDetector(onTap: _finish, child: Text('Passer', style: T.sans(14, color: AppColors.magenta))),
+                GestureDetector(onTap: _finish, child: Text(tr('Passer'), style: T.sans(14, color: AppColors.magenta))),
               ]),
             ),
             Expanded(
@@ -67,9 +68,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                     ]),
                     const SizedBox(height: 22),
-                    Text(s.$2, style: T.serif(34, height: 1.35)),
+                    Text(tr(s.$2), style: T.serif(34, height: 1.35)),
                     const SizedBox(height: 18),
-                    Text(s.$3, style: T.sans(15, color: AppColors.gray)),
+                    Text(tr(s.$3), style: T.sans(15, color: AppColors.gray)),
                   ]);
                 },
               ),
@@ -87,7 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: _finish,
-                  child: Text('Déjà un compte ? Se connecter', style: T.sans(12, color: AppColors.gray)),
+                  child: Text(tr('Déjà un compte ? Se connecter'), style: T.sans(12, color: AppColors.gray)),
                 ),
               ]),
             ),

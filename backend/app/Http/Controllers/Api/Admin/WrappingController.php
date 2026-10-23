@@ -62,7 +62,7 @@ class WrappingController extends Controller
             'position' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'image' => [$creating ? 'required' : 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-        ], ['image.required' => "Ajoutez une photo de l'emballage."]);
+        ], ['image.required' => __("Ajoutez une photo de l'emballage.")]);
         unset($data['image']);
         // Prix / position / statut laissés vides : valeur par défaut à la création, inchangés à la modification
         foreach (['price' => 0, 'position' => null, 'is_active' => true] as $key => $default) {

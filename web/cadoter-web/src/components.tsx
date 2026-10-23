@@ -1,11 +1,13 @@
 import { ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, formatPrice, Gift, giftPlace, ItemStatus } from "./api";
+import { LANGS, t } from "./i18n";
 import { Icon } from "./icons";
+import { useStore } from "./store";
 
 export function Badge({ status, children }: { status?: ItemStatus; children?: ReactNode }) {
   const ok = !status || status === "Disponible";
-  const label = children ?? (status === "Réservé" ? "Réservé par un proche" : status ?? "Disponible");
+  const label = children ?? t(status === "Réservé" ? "Réservé par un proche" : status ?? "Disponible");
   return <span className={`badge ${ok ? "ok" : "off"}`}>{label}</span>;
 }
 
@@ -39,7 +41,7 @@ export function Field({ label, error, children }: { label: string; error?: strin
 
 export function Breadcrumb({ items }: { items: [string, string?][] }) {
   return (
-    <nav className="breadcrumb" aria-label="Fil d'Ariane">
+    <nav className="breadcrumb" aria-label={t("Fil d'Ariane")}>
       {items.map(([label, to], i) => (
         <span key={label}>
           {i > 0 && " / "}
@@ -50,10 +52,10 @@ export function Breadcrumb({ items }: { items: [string, string?][] }) {
   );
 }
 
-export const IllustrativeNote = () => <p className="note">Exemples de cadeaux · Prix et lieux illustratifs</p>;
+export const IllustrativeNote = () => <p className="note">{t("Exemples de cadeaux · Prix et lieux illustratifs")}</p>;
 
-export function Loading({ label = "Chargement…" }: { label?: string }) {
-  return <p className="loading">{label}</p>;
+export function Loading({ label }: { label?: string }) {
+  return <p className="loading">{label ?? t("Chargement…")}</p>;
 }
 
 export function ErrorBox({ error, onRetry }: { error: ApiError | Error | string | null; onRetry?: () => void }) {
@@ -62,7 +64,7 @@ export function ErrorBox({ error, onRetry }: { error: ApiError | Error | string 
   return (
     <div className="alert" role="alert">
       <span>{msg}</span>
-      {onRetry && <button className="link" onClick={onRetry}>Réessayer</button>}
+      {onRetry && <button className="link" onClick={onRetry}>{t("Réessayer")}</button>}
     </div>
   );
 }
@@ -89,7 +91,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
         <div className="modal-head">
           <h2 className="h2">{title}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Fermer"><Icon name="close" /></button>
+          <button className="icon-btn" onClick={onClose} aria-label={t("Fermer")}><Icon name="close" /></button>
         </div>
         {children}
       </div>
@@ -99,3 +101,15 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
 
 /** Message d'erreur lisible d'un champ renvoyé par Laravel. */
 export const fieldError = (e: unknown, name: string) => (e instanceof ApiError ? e.field(name) : undefined);
+
+/** Choix de la langue : « FR | EN ». */
+export function LangSwitch({ className = "" }: { className?: string }) {
+  const { lang, setLanguage } = useStore();
+  return (
+    <span className={`lang-switch ${className}`} role="group" aria-label={t("Langue")}>
+      {LANGS.map(([code, name]) => (
+        <button key={code} type="button" className={code === lang ? "on" : ""} aria-pressed={code === lang} title={name} onClick={() => setLanguage(code)}>{code.toUpperCase()}</button>
+      ))}
+    </span>
+  );
+}

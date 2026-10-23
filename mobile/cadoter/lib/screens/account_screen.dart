@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -21,9 +22,9 @@ class AccountScreen extends StatelessWidget {
     void info(String title, String text) => showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: Text(title, style: T.serif(22)),
-            content: Text(text, style: T.sans(13)),
-            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+            title: Text(tr(title), style: T.serif(22)),
+            content: Text(tr(text), style: T.sans(13)),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(tr('OK')))],
           ),
         );
 
@@ -46,7 +47,7 @@ class AccountScreen extends StatelessWidget {
           pink: true,
           child: user == null
               ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Bienvenue sur CADOTER', style: T.sans(16, weight: FontWeight.w600)),
+                  Text(tr('Bienvenue sur CADOTER'), style: T.sans(16, weight: FontWeight.w600)),
                   const SizedBox(height: 14),
                   PrimaryButton('Se connecter', onPressed: () => ensureLoggedIn(context)),
                 ])
@@ -67,7 +68,7 @@ class AccountScreen extends StatelessWidget {
                 ]),
         ),
         const SizedBox(height: 30),
-        Text('Votre espace, vos envies.', style: T.serif(26)),
+        Text(tr('Votre espace, vos envies.'), style: T.serif(26)),
         const SizedBox(height: 14),
         for (final r in rows) _Row(icon: r.$1, label: r.$2, extra: r.$3, onTap: r.$4),
         if (user != null)
@@ -81,7 +82,7 @@ class AccountScreen extends StatelessWidget {
             },
           ),
         const SizedBox(height: 28),
-        Center(child: Text('CADOTER · Le bonheur d’offrir, tout simplement.', style: T.sans(11, color: AppColors.gray))),
+        Center(child: Text(tr('CADOTER · Le bonheur d’offrir, tout simplement.'), style: T.sans(11, color: AppColors.gray))),
       ]),
     );
   }
@@ -104,7 +105,7 @@ class _Row extends StatelessWidget {
           child: Row(children: [
             Icon(icon, size: 21, color: danger ? AppColors.magenta : AppColors.dark),
             const SizedBox(width: 14),
-            Expanded(child: Text(label, style: T.sans(14, color: danger ? AppColors.magenta : AppColors.dark))),
+            Expanded(child: Text(tr(label), style: T.sans(14, color: danger ? AppColors.magenta : AppColors.dark))),
             if (extra != null) Text(extra!, style: T.sans(11, color: AppColors.gray)),
             const SizedBox(width: 10),
             const Icon(Icons.chevron_right, size: 20, color: AppColors.dark),
@@ -157,7 +158,7 @@ class OrdersScreen extends StatelessWidget {
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text('${o['gift_name']} × ${o['quantity']}', style: T.sans(14, weight: FontWeight.w600)),
-                      subtitle: Text('${o['reference']} · ${_status[o['status']] ?? o['status']}', style: T.sans(12, color: AppColors.gray)),
+                      subtitle: Text('${o['reference']} · ${tr(_status[o['status']] ?? '${o['status']}')}', style: T.sans(12, color: AppColors.gray)),
                       trailing: Text(formatPrice(o['total'] as int, o['currency'] ?? 'FCFA'),
                           style: T.sans(13, weight: FontWeight.w600, color: AppColors.magenta)),
                     );

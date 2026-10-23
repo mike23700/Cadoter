@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/session.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
@@ -50,9 +51,9 @@ class _OrderScreenState extends State<OrderScreen> {
       await showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text('Merci pour cette belle attention.', style: T.serif(22)),
-          content: Text('${res['message']}\n\nRéférence : ${res['order']['reference']}', style: T.sans(13)),
-          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+          title: Text(tr('Merci pour cette belle attention.'), style: T.serif(22)),
+          content: Text('${res['message']}\n\n${tr('Référence :')} ${res['order']['reference']}', style: T.sans(13)),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(tr('OK')))],
         ),
       );
       if (mounted) Navigator.pop(context, true);
@@ -64,7 +65,7 @@ class _OrderScreenState extends State<OrderScreen> {
     }
   }
 
-  String? _req(String? v) => (v ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
+  String? _req(String? v) => (v ?? '').trim().isEmpty ? tr('Champ obligatoire.') : null;
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +108,8 @@ class _OrderScreenState extends State<OrderScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
               child: Row(children: [
-                Expanded(child: Text(_wrap?.name ?? 'Sans emballage', style: T.sans(13))),
-                Text('Changer', style: T.sans(12, color: AppColors.magenta, weight: FontWeight.w600)),
+                Expanded(child: Text(_wrap?.name ?? tr('Sans emballage'), style: T.sans(13))),
+                Text(tr('Changer'), style: T.sans(12, color: AppColors.magenta, weight: FontWeight.w600)),
               ]),
             ),
           ),
@@ -121,7 +122,7 @@ class _OrderScreenState extends State<OrderScreen> {
           const SizedBox(height: 26),
           PrimaryButton('Commander · ${formatPrice(total, g.currency)}', loading: _busy, onPressed: _submit),
           const SizedBox(height: 14),
-          Text('Vous recevrez une demande de paiement Mobile Money. La facture est émise par la boutique.',
+          Text(tr('Vous recevrez une demande de paiement Mobile Money. La facture est émise par la boutique.'),
               style: T.sans(11, color: AppColors.gray)),
         ]),
       ),

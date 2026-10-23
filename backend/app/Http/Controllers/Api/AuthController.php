@@ -21,9 +21,9 @@ class AuthController extends Controller
             'terms' => ['accepted'],
             'language' => ['nullable', 'in:fr,en'],
         ], [
-            'terms.accepted' => "Veuillez accepter les conditions d'utilisation.",
-            'email.unique' => 'Cet email est déjà utilisé.',
-            'phone.unique' => 'Ce numéro est déjà utilisé.',
+            'terms.accepted' => __("Veuillez accepter les conditions d'utilisation."),
+            'email.unique' => __('Cet email est déjà utilisé.'),
+            'phone.unique' => __('Ce numéro est déjà utilisé.'),
         ]);
 
         $user = User::create([
@@ -55,7 +55,7 @@ class AuthController extends Controller
             || (trim($data['password']) !== $data['password'] && Hash::check(trim($data['password']), $user->password)));
 
         if (! $ok) {
-            throw ValidationException::withMessages(['login' => 'Identifiants incorrects.']);
+            throw ValidationException::withMessages(['login' => __('Identifiants incorrects.')]);
         }
 
         return response()->json($this->session($user, $request));
@@ -65,7 +65,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()?->delete();
 
-        return response()->json(['message' => 'Déconnecté.']);
+        return response()->json(['message' => __('Déconnecté.')]);
     }
 
     public function me(Request $request)

@@ -258,7 +258,7 @@ Remise à zéro après les tests : `docker compose exec backend php artisan migr
 10. Cagnotte (`wallets`, `transactions`) — **à faire**
 11. Mot de passe oublié (email de réinitialisation) — **à faire**
 12. Assistante : brancher un vrai modèle IA derrière `POST /api/assistant/suggest` — **à faire**
-13. Traduction anglaise des textes (le choix de langue est enregistré) — **à faire**
+13. ~~Traduction anglaise des textes (web, mobile et messages de l'API)~~ ✅
 14. Tests automatisés (Pest côté Laravel) — **à faire**
 
 ## 9. Structure du projet

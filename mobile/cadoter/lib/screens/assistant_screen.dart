@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/api.dart';
+import '../core/i18n.dart';
 import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'gift_screen.dart';
@@ -42,7 +43,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         builder: (_) => SuggestionsScreen(
           suggestions: list,
           disclaimer: res['disclaimer'] as String? ?? '',
-          chips: [_event, '$_relation · $_age ans', '≤ ${formatPrice(_budget)}'],
+          chips: [tr(_event), '${tr(_relation)} · ${tr('{age} ans', {'age': _age})}', '≤ ${formatPrice(_budget)}'],
         ),
       ));
     } on ApiException catch (e) {
@@ -58,23 +59,23 @@ class _AssistantScreenState extends State<AssistantScreen> {
         body: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
           const Icon(Icons.auto_awesome_outlined, color: AppColors.magenta, size: 32),
           const SizedBox(height: 18),
-          Text('Parlez-nous de cette personne.', style: T.serif(32)),
+          Text(tr('Parlez-nous de cette personne.'), style: T.serif(32)),
           const SizedBox(height: 16),
-          Text('Quelques détails suffisent pour faire naître les bonnes idées.', style: T.sans(14, color: AppColors.gray)),
+          Text(tr('Quelques détails suffisent pour faire naître les bonnes idées.'), style: T.sans(14, color: AppColors.gray)),
           const SizedBox(height: 24),
           DropdownField(label: 'Type d’événement *', value: _event, items: _events, onChanged: (v) => setState(() => _event = v!)),
           DropdownField(label: 'Sexe de la personne *', value: _gender, items: _genders, onChanged: (v) => setState(() => _gender = v!)),
-          DropdownField(label: 'Âge *', value: _age, items: _ages, display: (a) => '$a ans', onChanged: (v) => setState(() => _age = v!)),
+          DropdownField(label: 'Âge *', value: _age, items: _ages, display: (a) => tr('{age} ans', {'age': a}), onChanged: (v) => setState(() => _age = v!)),
           DropdownField(label: 'Lien avec la personne *', value: _relation, items: _relations, onChanged: (v) => setState(() => _relation = v!)),
           DropdownField(
             label: 'Budget alloué *',
             value: '$_budget',
             items: _budgets.map((b) => '$b').toList(),
-            display: (b) => '${formatPrice(int.parse(b))} maximum',
+            display: (b) => tr('{price} maximum', {'price': formatPrice(int.parse(b))}),
             onChanged: (v) => setState(() => _budget = int.parse(v!)),
           ),
           LabeledField(label: 'Autres informations', controller: _info, maxLines: 3, hint: 'Elle aime le thé, la décoration et les moments calmes.'),
-          Text('* Champs requis · Suggestions indicatives à vérifier auprès du marchand. Évitez de partager des informations sensibles.',
+          Text(tr('* Champs requis · Suggestions indicatives à vérifier auprès du marchand. Évitez de partager des informations sensibles.'),
               style: T.sans(11, color: AppColors.gray)),
           const SizedBox(height: 24),
           PrimaryButton('Trouver mes idées', icon: Icons.auto_awesome_outlined, loading: _busy, onPressed: _submit),
@@ -94,7 +95,7 @@ class SuggestionsScreen extends StatelessWidget {
         appBar: const TopBar('Vos idées de cadeaux'),
         bottomNavigationBar: const AppBottomNav(current: 3),
         body: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 24), children: [
-          Text('Une attention qui lui ressemble.', style: T.serif(32)),
+          Text(tr('Une attention qui lui ressemble.'), style: T.serif(32)),
           const SizedBox(height: 20),
           Wrap(spacing: 8, runSpacing: 8, children: [for (final c in chips) Pill(c)]),
           const SizedBox(height: 22),
@@ -103,7 +104,7 @@ class SuggestionsScreen extends StatelessWidget {
           Text(disclaimer, style: T.sans(12, color: AppColors.gray)),
           const SizedBox(height: 22),
           if (suggestions.isEmpty)
-            Panel(child: Text('Aucune idée dans ce budget pour l’instant. Essayez un budget plus large ou une demande personnalisée.', style: T.sans(13))),
+            Panel(child: Text(tr('Aucune idée dans ce budget pour l’instant. Essayez un budget plus large ou une demande personnalisée.'), style: T.sans(13))),
           for (final s in suggestions) ...[
             NetImage(s.gift.imageUrl, aspect: 354 / 220),
             const SizedBox(height: 16),
@@ -119,7 +120,7 @@ class SuggestionsScreen extends StatelessWidget {
               pink: true,
               padding: const EdgeInsets.all(14),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Pourquoi ce cadeau ?', style: T.sans(12, weight: FontWeight.w600, color: AppColors.magenta)),
+                Text(tr('Pourquoi ce cadeau ?'), style: T.sans(12, weight: FontWeight.w600, color: AppColors.magenta)),
                 const SizedBox(height: 6),
                 Text(s.reason, style: T.sans(13)),
               ]),

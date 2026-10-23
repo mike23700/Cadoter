@@ -41,7 +41,7 @@ class ListItem extends Model
             'status' => $this->status,
             'gift_id' => $this->gift_id,
             'gift_slug' => $g?->slug,
-            'name' => $g?->name ?? $this->external_name ?? 'Produit externe',
+            'name' => $g?->name ?? $this->external_name ?? __('Produit externe'),
             'price' => $g?->price ?? $this->external_price,
             'currency' => $g?->currency ?? 'FCFA',
             'city' => $g?->city,
