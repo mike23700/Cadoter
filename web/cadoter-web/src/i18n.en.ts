@@ -571,6 +571,20 @@ const en: Record<string, string> = {
   "Cette boutique n'a pas encore de produit en ligne.": "This shop has no products online yet.",
   "Vendu par": "Sold by",
   "Pays *": "Country *",
+  "On cherche d'autres idées chez des boutiques en ligne…": "Looking for more ideas in online shops…",
+  "Idées trouvées ailleurs": "Ideas found elsewhere",
+  "Sur {site}": "On {site}",
+  "Voir sur {site} ↗": "View on {site} ↗",
+  "Le commander via CADOTER": "Order it through CADOTER",
+  "Je souhaite offrir ce produit vu sur {site} : {title} — {url}": "I would like to give this product seen on {site}: {title} — {url}",
+  "Ajouté à votre liste.": "Added to your list.",
+  "Connectez-vous pour ajouter cette idée à l'une de vos listes.": "Sign in to add this idea to one of your lists.",
+  "Vous n'avez pas encore de liste.": "You don't have a list yet.",
+  "Liste": "List",
+  "Budget alloué (FCFA) *": "Budget (FCFA) *",
+  "Nous n'avons pas trouvé de cadeau qui corresponde à votre demande. Notre équipe peut le chercher pour vous.": "We couldn't find a gift matching your request. Our team can look for it for you.",
+  "Ex. {n}": "e.g. {n}",
+  "Prix sur le site": "Price on the website",
 };
 
 export default en;

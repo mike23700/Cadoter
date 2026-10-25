@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, formatPrice } from "../api";
 import { t } from "../i18n";
 import { Breadcrumb, ErrorBox, Field, fieldError } from "../components";
@@ -10,7 +10,9 @@ import { WrapPicker } from "./Order";
 /** Cadeau personnalisé : formulaire uniquement, l'équipe recontacte (pas de commande directe). */
 export default function Custom() {
   const { user, meta } = useStore();
-  const [form, setForm] = useState({ name: "", phone: "", budget: "", description: "" });
+  // Pré-rempli depuis l'assistante (« Le commander via CADOTER »)
+  const [params] = useSearchParams();
+  const [form, setForm] = useState({ name: "", phone: "", budget: params.get("budget")?.replace(/\D/g, "") ?? "", description: params.get("description")?.slice(0, 2000) ?? "" });
   const [wrap, setWrap] = useState<number | "">("");
   const [err, setErr] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);

@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\GiftList;
 use App\Models\ListItem;
+use App\Services\LinkPreview;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -186,33 +186,9 @@ class ListController extends Controller
         ];
     }
 
-    /** Aperçu automatique (Open Graph) d'une page produit. Silencieux en cas d'échec. */
+    /** Aperçu automatique (Open Graph / schema.org) d'une page produit. Silencieux en cas d'échec. */
     private function preview(string $url): array
     {
-        $out = ['name' => parse_url($url, PHP_URL_HOST) ?: __('Produit externe'), 'image' => null, 'price' => null];
-        // Protection SSRF : uniquement http(s) vers une adresse publique
-        $host = parse_url($url, PHP_URL_HOST);
-        $scheme = parse_url($url, PHP_URL_SCHEME);
-        $ip = $host ? gethostbyname($host) : null;
-        if (! in_array($scheme, ['http', 'https'], true) || ! $ip
-            || ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
-            return $out;
-        }
-        try {
-            $html = Http::timeout(5)->withOptions(['allow_redirects' => false])->withHeaders(['User-Agent' => 'Mozilla/5.0 CadoterBot'])->get($url)->body();
-            $meta = function (string $prop) use ($html) {
-                return preg_match('/<meta[^>]+(?:property|name)=["\']'.preg_quote($prop, '/').'["\'][^>]+content=["\']([^"\']+)/i', $html, $m)
-                    ? html_entity_decode($m[1]) : null;
-            };
-            $out['name'] = $meta('og:title') ?? (preg_match('/<title>([^<]+)/i', $html, $m) ? trim(html_entity_decode($m[1])) : $out['name']);
-            $out['image'] = $meta('og:image');
-            $price = $meta('product:price:amount') ?? $meta('og:price:amount');
-            $out['price'] = $price ? (int) round((float) str_replace([' ', ','], ['', '.'], $price)) : null;
-        } catch (\Throwable) {
-            // l'aperçu est facultatif
-        }
-        $out['name'] = mb_substr($out['name'], 0, 190);
-
-        return $out;
+        return app(LinkPreview::class)->fetch($url);
     }
 }

@@ -35,4 +35,21 @@ return [
         ],
     ],
 
+    // IA de l'assistante (OpenRouter). Les modèles sont essayés dans l'ordre :
+    // le modèle principal, puis les secours si OpenRouter ne peut pas le joindre.
+    'openrouter' => [
+        'key' => env('OPENROUTER_API_KEY'),
+        'url' => env('OPENROUTER_URL', 'https://openrouter.ai/api/v1'),
+        'model' => env('OPENROUTER_MODEL', 'anthropic/claude-haiku-5.5'),
+        'fallback_models' => array_values(array_filter(array_map('trim', explode(',', (string) env('OPENROUTER_FALLBACK_MODELS', 'deepseek/deepseek-v4.1-flash'))))),
+        'embedding_model' => env('OPENROUTER_EMBEDDING_MODEL', 'baai/bge-m3'),
+        'embedding_dimensions' => (int) env('OPENROUTER_EMBEDDING_DIMENSIONS', 1024),
+        'timeout' => (int) env('OPENROUTER_TIMEOUT', 12),
+        // Recherche d'idées hors catalogue (assistante) : boutiques autorisées, séparées par des virgules. Vide = désactivée
+        'external_domains' => array_values(array_filter(array_map(fn ($d) => strtolower(trim($d)), explode(',', (string) env('ASSISTANT_EXTERNAL_DOMAINS', 'jumia.ci'))))),
+        // Grands sites internationaux, cherchés à part pour ne pas écraser les boutiques locales
+        'external_intl_domains' => array_values(array_filter(array_map(fn ($d) => strtolower(trim($d)), explode(',', (string) env('ASSISTANT_EXTERNAL_INTL_DOMAINS',
+            'amazon.fr,amazon.com,aliexpress.com,alibaba.com,ebay.com,etsy.com,temu.com,cdiscount.com,fnac.com'))))),
+    ],
+
 ];

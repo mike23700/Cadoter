@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Jobs\IndexGiftForSearch;
+use App\Services\GiftSearchIndex;
+use App\Services\OpenRouter;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +18,9 @@ class Gift extends Model
     ];
 
     protected $appends = ['image_url', 'image_urls', 'available', 'seller_name'];
+
+    // Données internes de la recherche de l'assistante IA
+    protected $hidden = ['search_vector', 'search_hash', 'ai_tags'];
 
     protected function casts(): array
     {
@@ -40,6 +46,13 @@ class Gift extends Model
                     $slug = $base.'-'.$i++;
                 }
                 $gift->slug = $slug;
+            }
+        });
+
+        // Réindexation en arrière-plan (étiquettes IA + vecteur) quand le contenu change
+        static::saved(function (Gift $gift) {
+            if (app(OpenRouter::class)->enabled() && ($gift->wasRecentlyCreated || $gift->wasChanged(GiftSearchIndex::SOURCE_FIELDS))) {
+                IndexGiftForSearch::dispatch($gift->id)->afterCommit();
             }
         });
     }

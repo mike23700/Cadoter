@@ -37,6 +37,8 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::post('/custom-requests', [OrderController::class, 'customRequest']);
     Route::post('/assistant/suggest', [AssistantController::class, 'suggest']);
 });
+// Recherche web (payante) : plus limitée
+Route::post('/assistant/external', [AssistantController::class, 'external'])->middleware('throttle:6,1');
 
 // ---- Connecté ----
 Route::middleware('auth:sanctum')->group(function () {

@@ -2,7 +2,7 @@
 # Ports hôte : 5433 (Postgres) et 8001 (API), car 5432/8000 sont pris par PEKEGNO.
 services:
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16 # PostgreSQL 16 + extension pgvector (recherche de l'assistante IA)
     container_name: cadoter-postgres
     restart: unless-stopped
     environment:
@@ -28,6 +28,8 @@ services:
     working_dir: /var/www
     environment:
       COMPOSER_HOME: /tmp/composer
+      # Plusieurs requêtes en parallèle (l'assistante IA peut répondre en quelques secondes)
+      PHP_CLI_SERVER_WORKERS: 4
     volumes:
       - ./:/var/www
     ports:
@@ -35,7 +37,22 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: php artisan serve --host=0.0.0.0 --port=8000
+    # --no-reload : requis pour PHP_CLI_SERVER_WORKERS (redémarrer le conteneur après un changement du .env)
+    command: php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+
+  # File d'attente : indexation des cadeaux pour l'assistante IA (étiquettes + vecteurs)
+  queue:
+    image: cadoter-php
+    container_name: cadoter-queue
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: php artisan queue:work --tries=3 --backoff=30 --sleep=3 --max-time=3600
 
 volumes:
   postgres_data:
