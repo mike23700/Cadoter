@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { Component, ErrorInfo, ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, formatPrice, Gift, giftPlace, ItemStatus } from "./api";
 import { LANGS, t } from "./i18n";
@@ -17,7 +17,7 @@ export function GiftCard({ gift }: { gift: Gift }) {
       <Photo src={gift.image_url} alt={gift.name} />
       <Badge status={gift.available ? "Disponible" : "Indisponible"} />
       <h3>{gift.name}</h3>
-      <p className="seller-name">Vendu par <strong>{gift.seller_name}</strong></p>
+      <p className="seller-name">{t("Vendu par")} <strong>{gift.seller_name}</strong></p>
       <p className="muted">{giftPlace(gift)}</p>
       <p className="price">{formatPrice(gift.price, gift.currency)}</p>
     </Link>
@@ -113,4 +113,26 @@ export function LangSwitch({ className = "" }: { className?: string }) {
       ))}
     </span>
   );
+}
+
+/** Affiche l'erreur au lieu d'une page blanche quand un écran plante au rendu. */
+export class ErrorBoundary extends Component<{ resetKey: string; children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  // Changer de page efface l'erreur
+  componentDidUpdate(prev: { resetKey: string }) { if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null }); }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error(error, info.componentStack); }
+  render() {
+    const { error } = this.state;
+    if (!error) return this.props.children;
+    return (
+      <div className="wrap">
+        <div className="empty" style={{ marginTop: 60 }}>
+          <p>{t("Une erreur est survenue.")}</p>
+          <p style={{ fontSize: 12, margin: "12px 0", overflowWrap: "anywhere" }}>{error.message}</p>
+          <button className="btn btn-primary" onClick={() => window.location.reload()}>{t("Recharger la page")}</button>
+        </div>
+      </div>
+    );
+  }
 }

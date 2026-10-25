@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Faq;
 use App\Models\Gift;
-use App\Models\GiftList;
 use App\Models\User;
 use App\Models\Wrapping;
 use Illuminate\Database\Seeder;
@@ -76,6 +76,21 @@ class DatabaseSeeder extends Seeder
             $list->items()->create(['gift_id' => $created[0]->id]);
             $list->items()->create(['gift_id' => $created[1]->id, 'status' => 'Réservé', 'reserved_by_name' => 'Fatou', 'reserved_at' => now()]);
             $list->items()->create(['gift_id' => $created[2]->id]);
+        }
+
+        // FAQ de départ, modifiable dans l'administration
+        if (! Faq::exists()) {
+            $faqs = [
+                ['Comment fonctionne une liste de cadeaux ?', 'Créez une liste, ajoutez-y vos envies puis partagez le lien. Vos proches réservent un cadeau pour éviter les doublons.',
+                    'How does a gift list work?', 'Create a list, add your wishes and share the link. Your loved ones reserve a gift so nobody offers the same thing twice.'],
+                ['Comment payer ma commande ?', 'Le paiement se fait par Orange Money ou MTN Mobile Money. Nous vous contactons pour confirmer la commande.',
+                    'How do I pay for my order?', 'Payment is made with Orange Money or MTN Mobile Money. We contact you to confirm the order.'],
+                ['Puis-je vendre mes produits sur CADOTER ?', 'Oui : contactez-nous, nous ouvrons un compte boutique pour que vous publiiez vos produits.',
+                    'Can I sell my products on CADOTER?', 'Yes: contact us and we will open a shop account so you can publish your products.'],
+            ];
+            foreach ($faqs as $i => [$q, $a, $qEn, $aEn]) {
+                Faq::create(['question' => $q, 'answer' => $a, 'question_en' => $qEn, 'answer_en' => $aEn, 'position' => $i + 1]);
+            }
         }
     }
 

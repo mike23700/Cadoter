@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\FaqController as AdminFaq;
 use App\Http\Controllers\Api\Admin\GiftController as AdminGift;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrder;
 use App\Http\Controllers\Api\Admin\PartnerController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUser;
 use App\Http\Controllers\Api\Admin\WrappingController as AdminWrapping;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AuthController;
@@ -24,6 +26,8 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::get('/meta', [CatalogController::class, 'meta']);
 Route::get('/gifts', [CatalogController::class, 'gifts']);
 Route::get('/gifts/{slug}', [CatalogController::class, 'gift']);
+Route::get('/faqs', [CatalogController::class, 'faqs']);
+Route::get('/shops/{partner}', [CatalogController::class, 'shop'])->whereNumber('partner');
 
 Route::get('/l/{code}', [SharedListController::class, 'show']);
 Route::post('/l/{code}/items/{item}/reserve', [SharedListController::class, 'reserve'])->middleware('throttle:20,1');
@@ -60,8 +64,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // ---- Administration (/admin) ----
     Route::prefix('admin')->middleware(EnsureAdmin::class)->group(function () {
         Route::get('/stats', [AdminOrder::class, 'stats']);
+        Route::get('/users', [AdminUser::class, 'index']);
+        Route::put('/users/{user}', [AdminUser::class, 'update']);
         Route::get('/partners', [PartnerController::class, 'index']);
         Route::post('/partners', [PartnerController::class, 'store']);
+        Route::put('/partners/{partner}', [PartnerController::class, 'update']);
+        Route::get('/faqs', [AdminFaq::class, 'index']);
+        Route::post('/faqs', [AdminFaq::class, 'store']);
+        Route::put('/faqs/{faq}', [AdminFaq::class, 'update']);
+        Route::delete('/faqs/{faq}', [AdminFaq::class, 'destroy']);
+        Route::get('/settings', [AdminFaq::class, 'settings']);
+        Route::put('/settings', [AdminFaq::class, 'updateSettings']);
         Route::get('/wrappings', [AdminWrapping::class, 'index']);
         Route::post('/wrappings', [AdminWrapping::class, 'store']);
         Route::post('/wrappings/{wrapping}', [AdminWrapping::class, 'update']);

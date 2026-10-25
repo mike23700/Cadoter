@@ -73,7 +73,7 @@ class GiftController extends Controller
             'description' => ['nullable', 'string', 'max:3000'],
             'price' => [$req, 'integer', 'min:0'],
             'currency' => ['nullable', 'string', 'max:8'],
-            'country' => ['nullable', 'string', 'max:80'],
+            'country' => [$req, 'string', 'max:80'],
             'city' => [$req, 'string', 'max:80'],
             'area' => ['nullable', 'string', 'max:80'],
             'shop' => ['nullable', 'string', 'max:120'],

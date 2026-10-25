@@ -18,6 +18,7 @@ export type Gift = {
   area: string | null;
   shop: string | null;
   seller_name: string;
+  partner_id: number | null;
   category: string | null;
   for_who: string[] | null;
   occasions: string[] | null;
@@ -72,7 +73,11 @@ export type Meta = {
   cities: string[];
   wrappings: Wrapping[];
   payment_methods: { code: string; name: string }[];
+  contact: { whatsapp: string | null };
 };
+
+export type Faq = { id: number; question: string; answer: string };
+export type AdminFaq = Faq & { question_en: string | null; answer_en: string | null; position: number; is_active: boolean };
 
 export type Order = {
   id: number; reference: string; gift_name: string; quantity: number; total: number; currency: string;
@@ -102,6 +107,23 @@ export const token = {
 
 type Body = Record<string, unknown> | FormData | undefined;
 
+// Les URLs d'images renvoyées par l'API sont absolues (APP_URL, ex. ngrok).
+// On les repasse en chemin relatif pour qu'elles passent par le proxy Vite
+// et évitent la page d'avertissement ngrok en local.
+const localizeStorageUrls = (value: unknown): unknown => {
+  if (typeof value === "string") {
+    const i = value.indexOf("/storage/");
+    return i > 0 && /^https?:\/\//.test(value) ? value.slice(i) : value;
+  }
+  if (Array.isArray(value)) return value.map(localizeStorageUrls);
+  if (value && typeof value === "object") {
+    for (const key of Object.keys(value)) {
+      (value as Record<string, unknown>)[key] = localizeStorageUrls((value as Record<string, unknown>)[key]);
+    }
+  }
+  return value;
+};
+
 export async function api<T>(path: string, opts: { method?: string; body?: Body; headers?: Record<string, string> } = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json", "Accept-Language": getLang(), ...opts.headers };
   const tok = token.get();
@@ -122,7 +144,7 @@ export async function api<T>(path: string, opts: { method?: string; body?: Body;
     if (res.status === 401) token.set(null);
     throw new ApiError(data?.message ?? t("Une erreur est survenue."), res.status, data?.errors ?? {}, data);
   }
-  return data as T;
+  return localizeStorageUrls(data) as T;
 }
 
 export const qs = (params: Record<string, string | number | boolean | undefined | null>) => {

@@ -7,7 +7,7 @@ import { t } from "../i18n";
 import { useStore } from "../store";
 
 /** Redirection sûre après connexion (chemins internes uniquement). */
-const useNext = (fallback = "/listes") => {
+const useNext = (fallback = "/") => {
   const [params] = useSearchParams();
   const next = params.get("next") ?? "";
   return next.startsWith("/") && !next.startsWith("//") ? next : fallback;
@@ -16,7 +16,7 @@ const useNext = (fallback = "/listes") => {
 export function Login({ admin = false }: { admin?: boolean }) {
   const { login, user } = useStore();
   const nav = useNavigate();
-  const next = useNext(admin ? "/admin" : "/listes");
+  const next = useNext(admin ? "/admin" : "/");
   const [form, setForm] = useState({ login: "", password: "" });
   const [show, setShow] = useState(false);
   const [err, setErr] = useState<unknown>(null);
@@ -40,7 +40,7 @@ export function Login({ admin = false }: { admin?: boolean }) {
   };
 
   return (
-    <div className="wrap auth">
+    <div className={`wrap auth ${admin ? "auth-admin" : ""}`}>
       {!admin && <img className="photo auth-photo" src="/img/emballage-rose.jpg" alt="" />}
       <form className="auth-card" onSubmit={submit}>
         {admin && <p className="eyebrow">{t("Administration CADOTER")}</p>}
@@ -58,7 +58,7 @@ export function Login({ admin = false }: { admin?: boolean }) {
         {!admin && <a className="link" style={{ fontWeight: 400 }} href={`mailto:contact@cadoter.com?subject=${encodeURIComponent(t("Mot de passe oublié"))}`}>{t("Mot de passe oublié ?")}</a>}
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
         <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Connexion…") : t("Me connecter")}</button>
-        {!admin && <Link to={`/inscription${next !== "/listes" ? `?next=${encodeURIComponent(next)}` : ""}`} className="btn btn-outline btn-block">{t("Créer un compte")}</Link>}
+        {!admin && <Link to={`/inscription${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="btn btn-outline btn-block">{t("Créer un compte")}</Link>}
       </form>
     </div>
   );
@@ -111,7 +111,7 @@ export function Signup() {
         {fieldError(err, "terms") && <em className="field-error">{fieldError(err, "terms")}</em>}
         <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
         <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Création…") : t("Créer mon compte")}</button>
-        <p className="small" style={{ textAlign: "center" }}>{t("Déjà inscrit·e ?")} <Link to="/connexion" className="price">{t("Se connecter")}</Link></p>
+        <p className="small" style={{ textAlign: "center" }}>{t("Déjà inscrit·e ?")} <Link to={`/connexion${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="price">{t("Se connecter")}</Link></p>
       </form>
     </div>
   );

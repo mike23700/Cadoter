@@ -48,6 +48,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Gift::class, 'favorites')->withTimestamps();
     }
 
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
+    }
+
     public function gifts(): HasMany
     {
         return $this->hasMany(Gift::class, 'partner_id');

@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
-import { api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, User, Wrapping } from "../api";
+import { AdminFaq, api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, User, Wrapping } from "../api";
 import { ErrorBox, Field, fieldError, LangSwitch, Loading, Modal } from "../components";
 import { t } from "../i18n";
 import { Icon } from "../icons";
@@ -9,6 +9,8 @@ import { useApi, useStore } from "../store";
 type Stats = { gifts: number; active_gifts: number; orders: number; pending_orders: number; revenue: number; custom_requests: number; users: number; lists: number };
 
 const ORDER_STATUS: Record<string, string> = { en_attente: "En attente de paiement", payee: "Payée", livree: "Livrée", annulee: "Annulée" };
+const COUNTRIES = ["Côte d'Ivoire", "Sénégal", "Mali", "Burkina Faso", "Bénin", "Togo", "Guinée", "Niger", "Cameroun", "Gabon", "Congo", "RD Congo", "Ghana", "Nigeria", "France"];
+const ROLES: Record<string, string> = { user: "Client", partner: "Boutique", admin: "Administrateur" };
 const REQUEST_STATUS: Record<string, string> = { nouvelle: "Nouvelle", en_cours: "En cours", traitee: "Traitée" };
 
 export default function Admin() {
@@ -23,10 +25,12 @@ export default function Admin() {
           <NavLink to="/admin" end><Icon name="clock" size={18} />{isPartner ? t("Accueil") : t("Tableau de bord")}</NavLink>
           <NavLink to="/admin/cadeaux"><Icon name="gift" size={18} />{t("Cadeaux")}</NavLink>
           {!isPartner && <>
+            <NavLink to="/admin/utilisateurs"><Icon name="user" size={18} />{t("Utilisateurs")}</NavLink>
             <NavLink to="/admin/boutiques"><Icon name="user" size={18} />{t("Boutiques partenaires")}</NavLink>
             <NavLink to="/admin/emballages"><Icon name="image" size={18} />{t("Emballages")}</NavLink>
             <NavLink to="/admin/commandes"><Icon name="list" size={18} />{t("Commandes")}</NavLink>
             <NavLink to="/admin/demandes"><Icon name="mail" size={18} />{t("Demandes perso.")}</NavLink>
+            <NavLink to="/admin/faq"><Icon name="help" size={18} />{t("FAQ & contact")}</NavLink>
           </>}
         </nav>
         <div className="admin-user">
@@ -41,10 +45,12 @@ export default function Admin() {
           <Route index element={isPartner ? <PartnerDashboard /> : <Dashboard />} />
           <Route path="cadeaux" element={<Gifts />} />
           {!isPartner && <>
+            <Route path="utilisateurs" element={<Users />} />
             <Route path="boutiques" element={<Partners />} />
             <Route path="emballages" element={<Wrappings />} />
             <Route path="commandes" element={<Orders />} />
             <Route path="demandes" element={<Requests />} />
+            <Route path="faq" element={<Faqs />} />
           </>}
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
@@ -90,20 +96,20 @@ type Partner = Pick<User, "id" | "name" | "email" | "phone" | "shop_name"> & { c
 function Partners() {
   const { notify } = useStore();
   const { data, error, loading, reload } = useApi<Partner[]>("/admin/partners");
-  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Partner | "new" | null>(null);
 
   return (
     <>
       <div className="admin-head">
         <h1 className="h1">Boutiques partenaires</h1>
-        <button className="btn btn-primary" onClick={() => setCreating(true)}>Ouvrir un compte <Icon name="plus" size={18} /></button>
+        <button className="btn btn-primary" onClick={() => setEditing("new")}>Ouvrir un compte <Icon name="plus" size={18} /></button>
       </div>
       <p className="muted small" style={{ marginBottom: 20 }}>Créez les accès des boutiques qui pourront publier et gérer leurs propres produits.</p>
       <ErrorBox error={error} onRetry={reload} />
       {loading && !data ? <Loading /> : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Boutique</th><th>Responsable</th><th>Email</th><th>Téléphone</th><th>Compte créé</th></tr></thead>
+            <thead><tr><th>Boutique</th><th>Responsable</th><th>Email</th><th>Téléphone</th><th>Compte créé</th><th></th></tr></thead>
             <tbody>
               {data?.map(partner => (
                 <tr key={partner.id}>
@@ -112,20 +118,21 @@ function Partners() {
                   <td>{partner.email}</td>
                   <td>{partner.phone || "—"}</td>
                   <td>{date(partner.created_at)}</td>
+                  <td className="actions"><button className="link" onClick={() => setEditing(partner)}>{t("Modifier")}</button></td>
                 </tr>
               ))}
-              {data?.length === 0 && <tr><td colSpan={5} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucune boutique partenaire. Ouvrez le premier compte.</td></tr>}
+              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>Aucune boutique partenaire. Ouvrez le premier compte.</td></tr>}
             </tbody>
           </table>
         </div>
       )}
-      {creating && <PartnerForm onClose={() => setCreating(false)} onSaved={() => { setCreating(false); reload(); notify("Compte boutique créé."); }} />}
+      {editing && <PartnerForm partner={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify(editing === "new" ? "Compte boutique créé." : t("Boutique mise à jour.")); }} />}
     </>
   );
 }
 
-function PartnerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [form, setForm] = useState({ name: "", shop_name: "", email: "", phone: "", password: "", password_confirmation: "" });
+function PartnerForm({ partner, onClose, onSaved }: { partner: Partner | null; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ name: partner?.name ?? "", shop_name: partner?.shop_name ?? "", email: partner?.email ?? "", phone: partner?.phone ?? "", password: "", password_confirmation: "" });
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   const set = (key: keyof typeof form) => (event: { target: { value: string } }) => setForm({ ...form, [key]: event.target.value });
@@ -135,7 +142,7 @@ function PartnerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
     setBusy(true);
     setError(null);
     try {
-      await api("/admin/partners", { body: form });
+      await api(partner ? `/admin/partners/${partner.id}` : "/admin/partners", { method: partner ? "PUT" : "POST", body: { ...form, phone: form.phone || null } });
       onSaved();
     } catch (e) {
       setError(e);
@@ -145,7 +152,7 @@ function PartnerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
   };
 
   return (
-    <Modal title="Ouvrir un compte boutique" onClose={onClose}>
+    <Modal title={partner ? t("Modifier la boutique") : "Ouvrir un compte boutique"} onClose={onClose}>
       <form className="form" onSubmit={submit}>
         <Field label="Nom de la boutique *" error={fieldError(error, "shop_name")}>
           <input className="input" required maxLength={120} value={form.shop_name} onChange={set("shop_name")} placeholder="Les fleurs de Grâce" />
@@ -162,15 +169,16 @@ function PartnerForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =>
           </Field>
         </div>
         <div className="grid-2">
-          <Field label="Mot de passe initial *" error={fieldError(error, "password")}>
-            <input className="input" type="password" required minLength={8} autoComplete="new-password" value={form.password} onChange={set("password")} />
+          <Field label={partner ? t("Nouveau mot de passe") : "Mot de passe initial *"} error={fieldError(error, "password")}>
+            <input className="input" type="password" required={!partner} minLength={8} autoComplete="new-password" value={form.password} onChange={set("password")} />
           </Field>
-          <Field label="Confirmer le mot de passe *" error={fieldError(error, "password_confirmation")}>
-            <input className="input" type="password" required minLength={8} autoComplete="new-password" value={form.password_confirmation} onChange={set("password_confirmation")} />
+          <Field label={partner ? t("Confirmer le mot de passe") : "Confirmer le mot de passe *"} error={fieldError(error, "password_confirmation")}>
+            <input className="input" type="password" required={!partner || !!form.password} minLength={8} autoComplete="new-password" value={form.password_confirmation} onChange={set("password_confirmation")} />
           </Field>
         </div>
+        {partner && <p className="note">{t("Laissez vide pour garder le mot de passe actuel. Un nouveau mot de passe déconnecte la boutique de ses appareils.")}</p>}
         <ErrorBox error={error instanceof ApiError && !Object.keys(error.errors).length ? error : null} />
-        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? "Création…" : "Créer le compte"}</button>
+        <button className="btn btn-primary btn-block" disabled={busy}>{partner ? (busy ? t("Enregistrement…") : t("Enregistrer")) : (busy ? "Création…" : "Créer le compte")}</button>
       </form>
     </Modal>
   );
@@ -267,7 +275,7 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
   const isPartner = user?.role === "partner";
   const [form, setForm] = useState({
     name: gift?.name ?? "", description: gift?.description ?? "", price: gift ? String(gift.price) : "",
-    city: gift?.city ?? "Abidjan", area: gift?.area ?? "", shop: gift?.shop ?? "", category: gift?.category ?? "",
+    country: gift?.country ?? "Côte d'Ivoire", city: gift?.city ?? "Abidjan", area: gift?.area ?? "", shop: gift?.shop ?? "", category: gift?.category ?? "",
     stock: gift?.stock != null ? String(gift.stock) : "", is_active: gift?.is_active ?? true, is_featured: gift?.is_featured ?? false,
   });
   const [forWho, setForWho] = useState<string[]>(gift?.for_who ?? []);
@@ -328,6 +336,8 @@ function GiftForm({ gift, onClose, onSaved }: { gift: Gift | null; onClose: () =
           <Field label={t("Prix (FCFA) *")} error={fieldError(err, "price")}><input className="input" type="number" min={0} required value={form.price} onChange={set("price")} /></Field>
           <Field label={t("Stock (vide = illimité)")} error={fieldError(err, "stock")}><input className="input" type="number" min={0} value={form.stock} onChange={set("stock")} /></Field>
         </div>
+        <Field label={t("Pays *")} error={fieldError(err, "country")}><input className="input" required maxLength={80} list="countries" value={form.country} onChange={set("country")} /></Field>
+        <datalist id="countries">{COUNTRIES.map(c => <option key={c} value={c} />)}</datalist>
         <div className="grid-2">
           <Field label={t("Ville *")} error={fieldError(err, "city")}><input className="input" required list="cities" value={form.city} onChange={set("city")} /></Field>
           <Field label={t("Quartier")}><input className="input" value={form.area} onChange={set("area")} placeholder="Cocody" /></Field>
@@ -531,5 +541,241 @@ function Requests() {
         </div>
       )}
     </>
+  );
+}
+
+function Faqs() {
+  const { notify } = useStore();
+  const { data, error, loading, reload } = useApi<AdminFaq[]>("/admin/faqs");
+  const [editing, setEditing] = useState<AdminFaq | "new" | null>(null);
+
+  const toggle = async (f: AdminFaq) => {
+    await api(`/admin/faqs/${f.id}`, { method: "PUT", body: { is_active: !f.is_active } });
+    reload();
+  };
+  const remove = async (f: AdminFaq) => {
+    if (!window.confirm(t("Supprimer la question « {q} » ?", { q: f.question }))) return;
+    await api(`/admin/faqs/${f.id}`, { method: "DELETE" });
+    notify(t("Question supprimée."));
+    reload();
+  };
+
+  return (
+    <>
+      <h1 className="h1" style={{ marginBottom: 20 }}>{t("FAQ & contact")}</h1>
+      <WhatsAppSetting />
+      <div className="admin-head" style={{ marginTop: 34 }}>
+        <h2 className="h2">{t("Questions fréquentes")}</h2>
+        <button className="btn btn-primary" onClick={() => setEditing("new")}>{t("Nouvelle question")} <Icon name="plus" size={18} /></button>
+      </div>
+      <p className="muted small" style={{ marginBottom: 20 }}>{t("Affichées sur la page FAQ du site. Une question hors ligne n'est plus visible.")}</p>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th>{t("Question")}</th><th>{t("Ordre")}</th><th>{t("En ligne")}</th><th></th></tr></thead>
+            <tbody>
+              {data?.map(f => (
+                <tr key={f.id}>
+                  <td className="cell-main"><b>{f.question}</b><br /><span className="note">{f.answer.length > 120 ? `${f.answer.slice(0, 120)}…` : f.answer}</span></td>
+                  <td data-label={t("Ordre")}>{f.position}</td>
+                  <td data-label={t("En ligne")}><button className={`switch ${f.is_active ? "on" : ""}`} onClick={() => toggle(f)} aria-label={t("En ligne")} aria-pressed={f.is_active} /></td>
+                  <td className="actions">
+                    <button className="link" onClick={() => setEditing(f)}>{t("Modifier")}</button>
+                    <button className="link-plain" onClick={() => remove(f)}>{t("Supprimer")}</button>
+                  </td>
+                </tr>
+              ))}
+              {data?.length === 0 && <tr><td colSpan={4} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucune question. Créez la première !")}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && <FaqForm faq={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify(t("Question enregistrée.")); }} />}
+    </>
+  );
+}
+
+function WhatsAppSetting() {
+  const { notify } = useStore();
+  const { data } = useApi<{ whatsapp_number: string | null }>("/admin/settings");
+  const [number, setNumber] = useState<string | null>(null);
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const value = number ?? data?.whatsapp_number ?? "";
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await api("/admin/settings", { method: "PUT", body: { whatsapp_number: value.trim() || null } });
+      notify(t("Numéro WhatsApp enregistré."));
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="panel" onSubmit={submit}>
+      <h2 className="h2">{t("Contact WhatsApp")}</h2>
+      <p className="muted small" style={{ margin: "8px 0 16px" }}>{t("Le formulaire « Nous contacter » ouvre WhatsApp vers ce numéro, avec le message du client pré-rempli.")}</p>
+      <div className="form">
+        <Field label={t("Numéro WhatsApp (avec l'indicatif)")} error={fieldError(err, "whatsapp_number")}>
+          <input className="input" type="tel" value={value} onChange={e => setNumber(e.target.value)} placeholder="+225 07 00 00 00 00" />
+        </Field>
+        <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
+        <div><button className="btn btn-primary" disabled={busy || !data}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button></div>
+      </div>
+    </form>
+  );
+}
+
+function FaqForm({ faq, onClose, onSaved }: { faq: AdminFaq | null; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    question: faq?.question ?? "", answer: faq?.answer ?? "", question_en: faq?.question_en ?? "", answer_en: faq?.answer_en ?? "",
+    position: faq ? String(faq.position) : "", is_active: faq?.is_active ?? true,
+  });
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      const body = { ...form, question_en: form.question_en || null, answer_en: form.answer_en || null, position: form.position === "" ? null : Number(form.position) };
+      await api(faq ? `/admin/faqs/${faq.id}` : "/admin/faqs", { method: faq ? "PUT" : "POST", body });
+      onSaved();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={faq ? t("Modifier la question") : t("Nouvelle question")} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <Field label={t("Question *")} error={fieldError(err, "question")}><input className="input" required maxLength={255} value={form.question} onChange={set("question")} placeholder={t("Comment payer ma commande ?")} /></Field>
+        <Field label={t("Réponse *")} error={fieldError(err, "answer")}><textarea className="input" required maxLength={5000} rows={5} value={form.answer} onChange={set("answer")} /></Field>
+        <Field label={t("Question en anglais (facultatif)")} error={fieldError(err, "question_en")}><input className="input" maxLength={255} value={form.question_en} onChange={set("question_en")} /></Field>
+        <Field label={t("Réponse en anglais (facultatif)")} error={fieldError(err, "answer_en")}><textarea className="input" maxLength={5000} rows={4} value={form.answer_en} onChange={set("answer_en")} /></Field>
+        <Field label={t("Ordre d'affichage")} error={fieldError(err, "position")}><input className="input" type="number" min={0} value={form.position} onChange={set("position")} placeholder={t("Automatique")} /></Field>
+        <label className="check">
+          <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
+          <span className="box"><Icon name="check" size={14} /></span>{t("En ligne (visible sur la page FAQ)")}
+        </label>
+        <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button>
+      </form>
+    </Modal>
+  );
+}
+
+type AdminUser = Pick<User, "id" | "name" | "email" | "phone" | "role" | "shop_name" | "language"> & { created_at: string; lists_count: number; orders_count: number; gifts_count: number };
+
+function Users() {
+  const { notify } = useStore();
+  const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [q, setQ] = useState("");
+  const [role, setRole] = useState("");
+  const params = new URLSearchParams(Object.entries({ q: q.trim(), role }).filter(([, v]) => v)).toString();
+  const { data, error, loading, reload } = useApi<AdminUser[]>(`/admin/users${params ? `?${params}` : ""}`);
+
+  return (
+    <>
+      <div className="admin-head"><h1 className="h1">{t("Utilisateurs")}</h1></div>
+      <input className="input admin-search" placeholder={t("Rechercher un nom, un email, un téléphone…")} value={q} onChange={e => setQ(e.target.value)} />
+      <div className="chips" style={{ margin: "16px 0 20px" }}>
+        {[["", "Tous"], ...Object.entries(ROLES)].map(([k, l]) => <button key={k} className={`chip ${role === k ? "on" : ""}`} onClick={() => setRole(k)}>{t(l)}</button>)}
+      </div>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : (
+        <>
+          {data && <p className="note" style={{ marginBottom: 12 }}>{t("{n} compte(s)", { n: data.length })}</p>}
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>{t("Nom")}</th><th>{t("Téléphone")}</th><th>{t("Rôle")}</th><th>{t("Listes")}</th><th>{t("Commandes")}</th><th>{t("Inscription")}</th><th></th></tr></thead>
+              <tbody>
+                {data?.map(u => (
+                  <tr key={u.id}>
+                    <td className="cell-main"><div><b>{u.name}</b>{u.shop_name && <> · {u.shop_name}</>}<br /><a className="note" href={`mailto:${u.email}`}>{u.email}</a></div></td>
+                    <td data-label={t("Téléphone")}>{u.phone ? <a href={`tel:${u.phone}`}>{u.phone}</a> : "—"}</td>
+                    <td data-label={t("Rôle")}><div><span className={`badge ${u.role === "user" ? "ok" : "off"}`}>{t(ROLES[u.role])}</span>{u.role === "partner" && <><br /><span className="note">{t("{n} produit(s)", { n: u.gifts_count })}</span></>}</div></td>
+                    <td data-label={t("Listes")}>{u.lists_count}</td>
+                    <td data-label={t("Commandes")}>{u.orders_count}</td>
+                    <td data-label={t("Inscription")}>{date(u.created_at)}</td>
+                    <td className="actions"><button className="link" onClick={() => setEditing(u)}>{t("Modifier")}</button></td>
+                  </tr>
+                ))}
+                {data?.length === 0 && <tr><td colSpan={7} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucun utilisateur trouvé.")}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {editing && <UserForm user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify(t("Compte mis à jour.")); }} />}
+    </>
+  );
+}
+
+function UserForm({ user, onClose, onSaved }: { user: AdminUser; onClose: () => void; onSaved: () => void }) {
+  const { user: me } = useStore();
+  const [form, setForm] = useState({ name: user.name, email: user.email, phone: user.phone ?? "", role: user.role as string, shop_name: user.shop_name ?? "", password: "", password_confirmation: "" });
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+  const isMe = me?.id === user.id;
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(`/admin/users/${user.id}`, { method: "PUT", body: { ...form, phone: form.phone || null, shop_name: form.shop_name || null } });
+      onSaved();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={t("Modifier le compte")} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <Field label={t("Nom *")} error={fieldError(err, "name")}><input className="input" required maxLength={120} value={form.name} onChange={set("name")} /></Field>
+        <div className="grid-2">
+          <Field label={t("Email *")} error={fieldError(err, "email")}><input className="input" type="email" required value={form.email} onChange={set("email")} /></Field>
+          <Field label={t("Téléphone")} error={fieldError(err, "phone")}><input className="input" type="tel" value={form.phone} onChange={set("phone")} /></Field>
+        </div>
+        <div className="grid-2">
+          <Field label={t("Rôle")} error={fieldError(err, "role")}>
+            <select className="input" value={form.role} onChange={set("role")} disabled={isMe}>
+              {Object.entries(ROLES).map(([k, l]) => <option key={k} value={k}>{t(l)}</option>)}
+            </select>
+          </Field>
+          {form.role === "partner" && (
+            <Field label={t("Nom de la boutique *")} error={fieldError(err, "shop_name")}><input className="input" required maxLength={120} value={form.shop_name} onChange={set("shop_name")} /></Field>
+          )}
+        </div>
+        {isMe && <p className="note">{t("Vous ne pouvez pas modifier votre propre rôle.")}</p>}
+        <div className="grid-2">
+          <Field label={t("Nouveau mot de passe")} error={fieldError(err, "password")}>
+            <input className="input" type="password" minLength={8} autoComplete="new-password" value={form.password} onChange={set("password")} />
+          </Field>
+          <Field label={t("Confirmer le mot de passe")} error={fieldError(err, "password_confirmation")}>
+            <input className="input" type="password" minLength={8} required={!!form.password} autoComplete="new-password" value={form.password_confirmation} onChange={set("password_confirmation")} />
+          </Field>
+        </div>
+        <p className="note">{t("Laissez vide pour garder le mot de passe actuel. Un nouveau mot de passe déconnecte le compte de ses appareils.")}</p>
+        <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button>
+      </form>
+    </Modal>
   );
 }

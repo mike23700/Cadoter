@@ -11,6 +11,7 @@ return [
         'budget' => 'budget',
         'category' => 'category',
         'city' => 'city',
+        'country' => 'country',
         'customer_email' => 'email',
         'customer_name' => 'name',
         'customer_phone' => 'phone',

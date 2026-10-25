@@ -107,6 +107,7 @@ return [
         'budget' => 'budget',
         'category' => 'catégorie',
         'city' => 'ville',
+        'country' => 'pays',
         'customer_email' => 'email',
         'customer_name' => 'nom',
         'customer_phone' => 'téléphone',

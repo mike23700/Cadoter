@@ -104,6 +104,7 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 .icon-btn:hover { background: var(--cream); }
 .icon-btn .count { position: absolute; top: 2px; right: 0; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--mag); color: #fff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
 .hello { min-height: 34px; padding: 7px 13px; border: 1px solid var(--line); border-radius: var(--pill); font-size: 12px; }
+.space-btn { display: inline-flex; align-items: center; gap: 6px; border-color: var(--mag); color: var(--mag); font-weight: 600; }
 .hello[aria-expanded="true"] { background: var(--mag); border-color: var(--mag); color: #fff; }
 .burger { display: none; }
 
@@ -124,7 +125,6 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 .menu-list .lang-switch button.on:hover { color: #fff; }
 .menu-lang { display: flex; align-items: center; gap: 12px; padding: 10px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
 .menu-lang .lang-switch { align-self: center; }
-.footer-lang { display: flex; align-items: center; gap: 10px; }
 .footer-bar nav { align-items: center; }
 
 /* ---------- Footer ---------- */
@@ -407,7 +407,12 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 
 /* Bouton compte (icône) visible seulement sur petit écran */
 .account-icon { display: none; }
-@media (max-width: 640px) { .account-icon { display: inline-grid; } }
+@media (max-width: 640px) {
+  .account-icon { display: inline-grid; }
+  /* Accès à l'espace boutique / admin : icône seule sur mobile */
+  .hello.space-btn { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; }
+  .space-btn span { display: none; }
+}
 
 /* ---------- États & retours ---------- */
 .loading { padding: 50px 0; text-align: center; color: var(--gray); font-size: 14px; }
@@ -431,7 +436,8 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 
 /* ---------- Connexion / inscription ---------- */
 .auth { display: grid; grid-template-columns: 1fr 480px; gap: 64px; align-items: start; padding-top: 48px; }
-.auth:has(> .auth-card:only-child) { grid-template-columns: 1fr; justify-items: center; }
+.auth.auth-admin { grid-template-columns: 1fr; justify-items: center; align-content: center; min-height: 100vh; min-height: 100dvh; padding: 32px var(--gutter); }
+.auth-admin .auth-card > .eyebrow, .auth-admin .auth-card > .display, .auth-admin .auth-card > .muted { text-align: center; }
 .auth-photo { aspect-ratio: 1 / 1; position: sticky; top: 130px; }
 .auth-card { display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 480px; }
 .auth-card .display { font-size: 40px; line-height: 1.2; }
@@ -530,3 +536,13 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
   .image-picker { grid-template-columns: 90px 1fr; gap: 12px; }
   .image-picker img, .image-picker .photo-empty { width: 90px; height: 76px; }
 }
+
+/* FAQ */
+.faq { display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+.faq details { background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); }
+.faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; font-weight: 600; font-size: 15px; cursor: pointer; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary svg { flex-shrink: 0; color: var(--mag); transition: transform .2s; }
+.faq details[open] summary svg { transform: rotate(45deg); }
+.faq details p { padding: 0 22px 20px; color: var(--gray); font-size: 14px; line-height: 1.6; white-space: pre-line; }
+.faq-contact { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 60px; }

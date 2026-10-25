@@ -35,5 +35,8 @@
     "This action is unauthorized.": "This action is unauthorized.",
     "Too Many Attempts.": "Too Many Attempts.",
     "Not Found": "Not Found",
-    "Server Error": "Server Error"
+    "Server Error": "Server Error",
+    "Numéro WhatsApp invalide (ex. +225 07 00 00 00 00).": "Invalid WhatsApp number (e.g. +225 07 00 00 00 00).",
+    "Indiquez le nom de la boutique.": "Enter the shop name.",
+    "Vous ne pouvez pas retirer vos propres droits d'administrateur.": "You cannot remove your own administrator rights."
 }

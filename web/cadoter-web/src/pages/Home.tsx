@@ -41,7 +41,7 @@ export default function Home() {
               <p className="lead">{t("Un anniversaire, une naissance ou juste l'envie de dire merci. Trouvez le cadeau qui raconte votre lien.")}</p>
               <div className="actions">
                 <Link to="/cadeaux" className="btn btn-primary">{t("Explorer les cadeaux")} <Icon name="arrow" size={18} /></Link>
-                <Link to={user ? "/listes" : "/inscription"} className="btn btn-outline">{t("Créer ma liste")}</Link>
+                <Link to={user ? "/listes" : "/inscription?next=%2Flistes"} className="btn btn-outline">{t("Créer ma liste")}</Link>
               </div>
               <p className="small muted">{t("Des idées choisies avec cœur, à partager à votre façon.")}</p>
             </div>
@@ -109,7 +109,7 @@ export default function Home() {
               <div><strong>02</strong><span>{t("J'ajoute des produits")}</span></div>
               <div><strong>03</strong><span>{t("Je partage ma liste")}</span></div>
             </div>
-            <Link to={user ? "/listes" : "/inscription"} className="btn btn-primary btn-block">{t("Créer ma première liste")}</Link>
+            <Link to={user ? "/listes" : "/inscription?next=%2Flistes"} className="btn btn-primary btn-block">{t("Créer ma première liste")}</Link>
           </div>
         </div>
       </section>

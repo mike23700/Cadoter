@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Faq;
 use App\Models\Gift;
+use App\Models\Setting;
+use App\Models\User;
 use App\Models\Wrapping;
 use Illuminate\Http\Request;
 
@@ -68,6 +71,27 @@ class CatalogController extends Controller
                 ['code' => 'orange_money', 'name' => 'Orange Money'],
                 ['code' => 'mtn_momo', 'name' => 'MTN Mobile Money'],
             ],
+            'contact' => ['whatsapp' => Setting::getValue('whatsapp_number')],
         ]);
+    }
+
+    /** Page publique d'une boutique partenaire et de ses produits en ligne. */
+    public function shop(User $partner)
+    {
+        abort_unless($partner->role === 'partner', 404);
+
+        return response()->json([
+            'id' => $partner->id,
+            'shop_name' => $partner->shop_name,
+            'created_at' => $partner->created_at,
+            'gifts' => $partner->gifts()->with('partner:id,shop_name')->where('is_active', true)
+                ->orderByDesc('is_featured')->latest()->get(),
+        ]);
+    }
+
+    public function faqs()
+    {
+        return response()->json(Faq::where('is_active', true)->orderBy('position')->orderBy('id')->get()
+            ->map(fn (Faq $f) => $f->localized()));
     }
 }
