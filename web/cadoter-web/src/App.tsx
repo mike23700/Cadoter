@@ -5,6 +5,7 @@ import { t } from "./i18n";
 import { ErrorBoundary, LangSwitch } from "./components";
 import { Icon, IconName } from "./icons";
 import { RequireAuth, useStore } from "./store";
+import { watchNavigation } from "./diagnostics";
 import Home from "./pages/Home";
 import Catalog from "./pages/Catalog";
 import GiftPage from "./pages/GiftPage";
@@ -165,7 +166,7 @@ function Footer() {
 export default function App() {
   const { pathname } = useLocation();
   const { toast } = useStore();
-  useEffect(() => window.scrollTo(0, 0), [pathname]);
+  useEffect(() => { window.scrollTo(0, 0); watchNavigation(pathname); }, [pathname]);
 
   if (pathname.startsWith("/admin")) {
     return (

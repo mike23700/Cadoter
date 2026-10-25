@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\WrappingController as AdminWrapping;
 use App\Http\Controllers\Api\AssistantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
+use App\Http\Controllers\Api\ClientLogController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\ListController;
 use App\Http\Controllers\Api\OrderController;
@@ -37,6 +38,9 @@ Route::middleware('throttle:20,1')->group(function () {
     Route::post('/custom-requests', [OrderController::class, 'customRequest']);
     Route::post('/assistant/suggest', [AssistantController::class, 'suggest']);
 });
+// Diagnostic temporaire de la « page blanche » (voir ClientLogController)
+Route::post('/client-log', [ClientLogController::class, 'store'])->middleware('throttle:60,1');
+
 // Recherche web (payante) : plus limitée
 Route::post('/assistant/external', [AssistantController::class, 'external'])->middleware('throttle:6,1');
 

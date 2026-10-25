@@ -550,6 +550,7 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 /* Assistante : idées hors catalogue */
 .external-ideas { margin: 34px 0 22px; padding-top: 26px; border-top: 1px dashed var(--line); }
 .external-head { margin-bottom: 18px; }
+.see-more { display: block; margin: 4px auto 0; font-size: 14px; }
 .external-head .h2 { font-size: 26px; margin-bottom: 6px; }
 .external-ideas .suggestion h3 { font-size: 20px; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .external-ideas .suggestion img { object-fit: contain; background: #fff; }

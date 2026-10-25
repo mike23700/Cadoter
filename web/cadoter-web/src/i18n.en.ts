@@ -585,6 +585,7 @@ const en: Record<string, string> = {
   "Nous n'avons pas trouvé de cadeau qui corresponde à votre demande. Notre équipe peut le chercher pour vous.": "We couldn't find a gift matching your request. Our team can look for it for you.",
   "Ex. {n}": "e.g. {n}",
   "Prix sur le site": "Price on the website",
+  "Voir plus ({n})": "See more ({n})",
 };
 
 export default en;

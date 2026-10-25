@@ -132,6 +132,7 @@ export default function Assistant() {
 function ExternalIdeas({ ideas, budget }: { ideas: External; budget: number }) {
   const nav = useNavigate();
   const [adding, setAdding] = useState<ExternalIdea | null>(null);
+  const [shown, setShown] = useState(3); // « Voir plus » en affiche 3 de plus
 
   // « Le commander via CADOTER » : demande de cadeau personnalisé pré-remplie
   const order = (idea: ExternalIdea) => {
@@ -146,7 +147,7 @@ function ExternalIdeas({ ideas, budget }: { ideas: External; budget: number }) {
         <h3 className="h2">{t("Idées trouvées ailleurs")}</h3>
         <p className="small muted">{ideas.disclaimer}</p>
       </div>
-      {ideas.results.map(idea => (
+      {ideas.results.slice(0, shown).map(idea => (
         <article key={idea.url} className="suggestion">
           <Photo src={idea.image} alt={idea.title} />
           <div className="body">
@@ -162,6 +163,11 @@ function ExternalIdeas({ ideas, budget }: { ideas: External; budget: number }) {
           </div>
         </article>
       ))}
+      {shown < ideas.results.length && (
+        <button type="button" className="link see-more" onClick={() => setShown(n => n + 3)}>
+          {t("Voir plus ({n})", { n: ideas.results.length - shown })} ↓
+        </button>
+      )}
       {adding && <AddToList idea={adding} onClose={() => setAdding(null)} />}
     </section>
   );

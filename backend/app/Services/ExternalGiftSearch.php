@@ -64,12 +64,12 @@ class ExternalGiftSearch
     /**
      * @return array<int, array{title: string, url: string, image: ?string, price: ?int, currency: ?string, site: string, reason: string}>
      */
-    public function search(array $criteria, int $limit = 6): array
+    public function search(array $criteria, int $limit = 10): array
     {
         if (! $this->enabled()) {
             return [];
         }
-        $key = 'assistant-ext:'.sha1(json_encode([$criteria, app()->getLocale(), $this->domainGroups()]));
+        $key = 'assistant-ext:'.sha1(json_encode([$criteria, app()->getLocale(), $this->domainGroups(), $limit]));
 
         return Cache::remember($key, now()->addHours(6), fn () => $this->run($criteria, $limit));
     }
@@ -110,7 +110,8 @@ class ExternalGiftSearch
                 }
             }
         }
-        $picked = $picked->unique('url')->take(10)->values();
+        // Plus de candidats que nécessaire : certains seront écartés à la vérification
+        $picked = $picked->unique('url')->take($limit + 4)->values();
         if ($picked->isEmpty()) {
             return [];
         }

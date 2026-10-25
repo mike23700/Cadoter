@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, formatPrice, Gift, giftPlace, ItemStatus } from "./api";
+import { reportError } from "./diagnostics";
 import { LANGS, t } from "./i18n";
 import { Icon } from "./icons";
 import { useStore } from "./store";
@@ -121,7 +122,7 @@ export class ErrorBoundary extends Component<{ resetKey: string; children: React
   static getDerivedStateFromError(error: Error) { return { error }; }
   // Changer de page efface l'erreur
   componentDidUpdate(prev: { resetKey: string }) { if (this.state.error && prev.resetKey !== this.props.resetKey) this.setState({ error: null }); }
-  componentDidCatch(error: Error, info: ErrorInfo) { console.error(error, info.componentStack); }
+  componentDidCatch(error: Error, info: ErrorInfo) { console.error(error, info.componentStack); reportError(error, info.componentStack?.slice(0, 300) ?? ""); }
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
