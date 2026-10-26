@@ -53,6 +53,11 @@ class User extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    public function importantDates(): HasMany
+    {
+        return $this->hasMany(ImportantDate::class);
+    }
+
     public function gifts(): HasMany
     {
         return $this->hasMany(Gift::class, 'partner_id');

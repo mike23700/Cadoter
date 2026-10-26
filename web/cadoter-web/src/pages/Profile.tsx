@@ -1,8 +1,22 @@
-import { FormEvent, useState } from "react";
-import { ApiError } from "../api";
+import { FormEvent, useEffect, useState } from "react";
+import { api, ApiError, ImportantDate } from "../api";
 import { Breadcrumb, ErrorBox, Field, fieldError } from "../components";
 import { Icon } from "../icons";
+import { locale, t } from "../i18n";
 import { useStore } from "../store";
+
+type ImportantDateForm = Pick<ImportantDate, "person_name" | "title" | "event_date">;
+
+const emptyImportantDateForm = (): ImportantDateForm => ({ person_name: "", title: "", event_date: "" });
+
+const sortImportantDates = (dates: ImportantDate[]) =>
+  [...dates].sort((a, b) => a.next_occurrence.localeCompare(b.next_occurrence));
+
+const formatImportantDate = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Intl.DateTimeFormat(locale(), { day: "numeric", month: "long", year: "numeric" })
+    .format(new Date(year, month - 1, day));
+};
 
 export default function Profile() {
   const { user, updateUser, updatePassword, notify } = useStore();
@@ -17,6 +31,28 @@ export default function Profile() {
   const [passwordForm, setPasswordForm] = useState({ current_password: "", password: "", password_confirmation: "" });
   const [passwordError, setPasswordError] = useState<unknown>(null);
   const [passwordBusy, setPasswordBusy] = useState(false);
+  const [importantDates, setImportantDates] = useState<ImportantDate[]>([]);
+  const [importantDatesLoading, setImportantDatesLoading] = useState(true);
+  const [importantDatesError, setImportantDatesError] = useState<unknown>(null);
+  const [importantDateError, setImportantDateError] = useState<unknown>(null);
+  const [importantDateForm, setImportantDateForm] = useState<ImportantDateForm>(emptyImportantDateForm);
+  const [editingImportantDateId, setEditingImportantDateId] = useState<number | null>(null);
+  const [importantDateBusy, setImportantDateBusy] = useState(false);
+  const [deletingImportantDateId, setDeletingImportantDateId] = useState<number | null>(null);
+  const [importantDatesReload, setImportantDatesReload] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setImportantDatesLoading(true);
+    setImportantDatesError(null);
+
+    api<ImportantDate[]>("/important-dates")
+      .then(dates => { if (active) setImportantDates(sortImportantDates(dates)); })
+      .catch(err => { if (active) setImportantDatesError(err); })
+      .finally(() => { if (active) setImportantDatesLoading(false); });
+
+    return () => { active = false; };
+  }, [importantDatesReload]);
 
   if (!user) return null;
 
@@ -59,6 +95,61 @@ export default function Profile() {
       setPasswordError(err);
     } finally {
       setPasswordBusy(false);
+    }
+  };
+
+  const submitImportantDate = async (event: FormEvent) => {
+    event.preventDefault();
+    setImportantDateBusy(true);
+    setImportantDateError(null);
+
+    const payload = {
+      person_name: importantDateForm.person_name.trim(),
+      title: importantDateForm.title.trim(),
+      event_date: importantDateForm.event_date,
+    };
+
+    try {
+      const savedDate = editingImportantDateId
+        ? await api<ImportantDate>("/important-dates/" + editingImportantDateId, { method: "PUT", body: payload })
+        : await api<ImportantDate>("/important-dates", { body: payload });
+      setImportantDates(current => sortImportantDates([...current.filter(date => date.id !== savedDate.id), savedDate]));
+      setImportantDateForm(emptyImportantDateForm());
+      setEditingImportantDateId(null);
+      notify(t(editingImportantDateId ? "Date modifiée." : "Date ajoutée."));
+    } catch (err) {
+      setImportantDateError(err);
+    } finally {
+      setImportantDateBusy(false);
+    }
+  };
+
+  const editImportantDate = (date: ImportantDate) => {
+    setImportantDateError(null);
+    setEditingImportantDateId(date.id);
+    setImportantDateForm({ person_name: date.person_name, title: date.title, event_date: date.event_date });
+  };
+
+  const cancelImportantDateEdit = () => {
+    setEditingImportantDateId(null);
+    setImportantDateForm(emptyImportantDateForm());
+    setImportantDateError(null);
+  };
+
+  const deleteImportantDate = async (date: ImportantDate) => {
+    if (!window.confirm(t("Supprimer cette date ?"))) return;
+    setDeletingImportantDateId(date.id);
+    setImportantDateError(null);
+
+    try {
+      await api<void>("/important-dates/" + date.id, { method: "DELETE" });
+      setImportantDates(current => current.filter(item => item.id !== date.id));
+      if (editingImportantDateId === date.id) cancelImportantDateEdit();
+      notify(t("Date supprimée."));
+    } catch (err) {
+      setImportantDateError(err);
+    } finally {
+      setDeletingImportantDateId(null);
     }
   };
 
@@ -105,6 +196,93 @@ export default function Profile() {
         </aside>
 
         <div className="profile-panels">
+          <section className="panel profile-card">
+            <div className="profile-card-head">
+              <span className="profile-card-icon"><Icon name="cake" size={20} /></span>
+              <div className="profile-card-copy">
+                <p className="eyebrow">{t("Vos dates à célébrer")}</p>
+                <h2>{t("Les moments qui comptent")}</h2>
+                <p>{t("Enregistrez les anniversaires et autres événements de vos proches. Chaque date revient automatiquement chaque année.")}</p>
+              </div>
+            </div>
+
+            <ErrorBox
+              error={importantDateError instanceof Error && !(importantDateError instanceof ApiError && Object.keys(importantDateError.errors).length) ? importantDateError : null}
+            />
+            <form className="form" onSubmit={submitImportantDate}>
+              <div className="grid-2">
+                <Field label={t("Personne *")} error={fieldError(importantDateError, "person_name")}>
+                  <input
+                    className="input"
+                    autoComplete="off"
+                    maxLength={120}
+                    required
+                    value={importantDateForm.person_name}
+                    onChange={event => setImportantDateForm({ ...importantDateForm, person_name: event.target.value })}
+                    placeholder={t("Ex. Aïcha et Karim")}
+                  />
+                </Field>
+                <Field label={t("Titre de l’événement *")} error={fieldError(importantDateError, "title")}>
+                  <input
+                    className="input"
+                    maxLength={160}
+                    required
+                    value={importantDateForm.title}
+                    onChange={event => setImportantDateForm({ ...importantDateForm, title: event.target.value })}
+                    placeholder={t("Ex. Anniversaire de mariage")}
+                  />
+                </Field>
+                <Field label={t("Date de l’événement *")} error={fieldError(importantDateError, "event_date")}>
+                  <input
+                    className="input"
+                    type="date"
+                    required
+                    value={importantDateForm.event_date}
+                    onChange={event => setImportantDateForm({ ...importantDateForm, event_date: event.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="profile-form-footer important-date-form-footer">
+                <p className="note">{t("Un e-mail sera envoyé à {email} une semaine avant, 3 jours avant et le jour même.", { email: user.email })}</p>
+                <div className="important-date-form-actions">
+                  {editingImportantDateId && <button type="button" className="btn btn-outline" onClick={cancelImportantDateEdit}>{t("Annuler")}</button>}
+                  <button className="btn btn-primary" disabled={importantDateBusy}>
+                    {importantDateBusy ? t("Enregistrement…") : t(editingImportantDateId ? "Mettre à jour la date" : "Ajouter cette date")}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <ErrorBox
+              error={importantDatesError instanceof Error ? importantDatesError : null}
+              onRetry={() => setImportantDatesReload(value => value + 1)}
+            />
+            {importantDatesLoading ? (
+              <p className="note important-date-loading">{t("Chargement des dates…")}</p>
+            ) : importantDates.length ? (
+              <div className="important-date-list">
+                {importantDates.map(date => (
+                  <article className="important-date-item" key={date.id}>
+                    <div className="important-date-copy">
+                      <span className="important-date-next">{t("Prochaine date : {date}", { date: formatImportantDate(date.next_occurrence) })}</span>
+                      <h3>{date.title}</h3>
+                      <p>{t("Pour {person}", { person: date.person_name })}</p>
+                      <span className="note">{t("Rappels par e-mail : J-7, J-3 et le jour J")}</span>
+                    </div>
+                    <div className="important-date-actions">
+                      <button type="button" className="btn btn-outline" onClick={() => editImportantDate(date)}>{t("Modifier")}</button>
+                      <button type="button" className="link" disabled={deletingImportantDateId === date.id} onClick={() => deleteImportantDate(date)}>
+                        {deletingImportantDateId === date.id ? t("Suppression…") : t("Supprimer")}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="empty important-date-empty">{t("Aucune date enregistrée pour le moment.")}</p>
+            )}
+          </section>
+
           <section className="panel profile-card">
             <div className="profile-card-head">
               <span className="profile-card-icon"><Icon name="user" size={20} /></span>

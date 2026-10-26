@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\ClientLogController;
 use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\ImportantDateController;
 use App\Http\Controllers\Api\ListController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\SharedListController;
@@ -66,6 +67,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/favorites/{gift}', [FavoriteController::class, 'toggle']);
 
     Route::get('/orders/mine', [OrderController::class, 'mine']);
+
+    Route::get('/important-dates', [ImportantDateController::class, 'index']);
+    Route::post('/important-dates', [ImportantDateController::class, 'store']);
+    Route::put('/important-dates/{importantDate}', [ImportantDateController::class, 'update']);
+    Route::delete('/important-dates/{importantDate}', [ImportantDateController::class, 'destroy']);
 
     // ---- Administration (/admin) ----
     Route::prefix('admin')->middleware(EnsureAdmin::class)->group(function () {

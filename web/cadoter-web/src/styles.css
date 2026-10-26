@@ -235,6 +235,20 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 .profile-password-fields { display: flex; flex-direction: column; gap: 22px; max-width: 100%; }
 .profile-password-fields > .field { max-width: calc(50% - 8px); }
 .profile-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 20px; border-top: 1px solid var(--line); }
+.important-date-form-footer { align-items: flex-start; }
+.important-date-form-footer .note { max-width: 420px; }
+.important-date-form-actions, .important-date-actions { display: flex; align-items: center; gap: 12px; }
+.important-date-list { display: flex; flex-direction: column; gap: 12px; margin-top: 22px; }
+.important-date-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px; padding: 18px; border: 1px solid var(--line); border-radius: var(--r-lg); background: #fff; }
+.important-date-copy { min-width: 0; }
+.important-date-copy h3 { margin: 6px 0 4px; font-size: 18px; overflow-wrap: anywhere; }
+.important-date-copy p { margin-bottom: 8px; color: var(--gray); font-size: 13px; }
+.important-date-copy .note { font-size: 11px; }
+.important-date-next { color: var(--mag); font-size: 11px; font-weight: 700; }
+.important-date-empty { margin-top: 22px; padding: 24px 16px; }
+.important-date-loading { margin-top: 22px; }
+.important-date-actions .btn { min-height: 40px; padding: 9px 14px; }
+.important-date-actions .link:disabled { opacity: .5; cursor: wait; }
 
 /* ---------- Fiche cadeau ---------- */
 .product { display: grid; grid-template-columns: 640px 1fr; gap: 64px; align-items: start; }
@@ -403,6 +417,9 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
   .profile-password-fields > .field { max-width: 100%; }
   .profile-form-footer { align-items: stretch; flex-direction: column; }
   .profile-form-footer .btn { width: 100%; white-space: normal; }
+  .important-date-item { grid-template-columns: 1fr; align-items: stretch; }
+  .important-date-actions, .important-date-form-actions { align-items: stretch; flex-direction: column; }
+  .important-date-actions .btn, .important-date-form-actions .btn { width: 100%; }
 }
 
 /* Bouton compte (icône) visible seulement sur petit écran */

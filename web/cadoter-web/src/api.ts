@@ -6,6 +6,14 @@ const TOKEN_KEY = "cadoter:token";
 
 export type User = { id: number; name: string; email: string; phone: string | null; role: "user" | "admin" | "partner"; shop_name?: string | null; language: string };
 
+export type ImportantDate = {
+  id: number;
+  person_name: string;
+  title: string;
+  event_date: string;
+  next_occurrence: string;
+};
+
 export type Gift = {
   id: number;
   name: string;
