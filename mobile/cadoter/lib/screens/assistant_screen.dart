@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/api.dart';
 import '../core/i18n.dart';
@@ -37,7 +38,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         'budget': _budget,
         'info': _info.text.trim(),
       });
-      final list = (res['suggestions'] as List).map((s) => Suggestion(Gift.fromJson(s['gift']), s['reason'] as String)).toList();
+      final list = (res['suggestions'] as List).map((s) => Suggestion(Gift.fromJson(s['gift']), s['reason'] as String, s['card'] as String? ?? '')).toList();
       if (!mounted) return;
       Navigator.push(context, MaterialPageRoute(
         builder: (_) => SuggestionsScreen(
@@ -125,6 +126,26 @@ class SuggestionsScreen extends StatelessWidget {
                 Text(s.reason, style: T.sans(13)),
               ]),
             ),
+            if (s.card.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Panel(
+                padding: const EdgeInsets.all(14),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Expanded(child: Text(tr('Texte pour la carte'), style: T.sans(12, weight: FontWeight.w600, color: AppColors.magenta))),
+                    TextButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: s.card));
+                        if (context.mounted) toast(context, 'Texte copié !');
+                      },
+                      icon: const Icon(Icons.copy, size: 16, color: AppColors.magenta),
+                      label: Text(tr('Copier'), style: T.sans(12, weight: FontWeight.w600, color: AppColors.magenta)),
+                    ),
+                  ]),
+                  SelectableText(s.card, style: T.sans(14).copyWith(fontStyle: FontStyle.italic, height: 1.5)),
+                ]),
+              ),
+            ],
             const SizedBox(height: 14),
             SecondaryButton('Voir ce cadeau',
                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GiftScreen(slug: s.gift.slug)))),

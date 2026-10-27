@@ -335,6 +335,10 @@ const en: Record<string, string> = {
   "Remplissez le formulaire : nos suggestions s'appuient sur le catalogue CADOTER. Prix et disponibilité à confirmer auprès du marchand.": "Fill in the form: our suggestions are based on the CADOTER catalogue. Prices and availability to be confirmed with the merchant.",
   "Aucune idée dans ce budget pour l'instant.": "No ideas within this budget yet.",
   "Pourquoi ce cadeau ?": "Why this gift?",
+  "Texte pour la carte": "Card message",
+  "Copier": "Copy",
+  "Texte copié !": "Text copied!",
+  "Copie impossible : sélectionnez le texte pour le copier.": "Couldn't copy: select the text to copy it.",
   "Voir ce cadeau →": "See this gift →",
   "Affiner mes critères": "Refine my criteria",
 

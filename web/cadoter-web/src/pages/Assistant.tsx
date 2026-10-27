@@ -6,9 +6,9 @@ import { Icon } from "../icons";
 import { t } from "../i18n";
 import { useApi, useStore } from "../store";
 
-type Suggestion = { gift: Gift; reason: string };
+type Suggestion = { gift: Gift; reason: string; card?: string };
 type Result = { suggestions: Suggestion[]; external_available?: boolean; disclaimer: string };
-type ExternalIdea = { title: string; url: string; image: string | null; price: number | null; currency: string | null; site: string; reason: string };
+type ExternalIdea = { title: string; url: string; image: string | null; price: number | null; currency: string | null; site: string; reason: string; card?: string };
 type External = { results: ExternalIdea[]; disclaimer: string };
 
 /** En dessous de ce nombre de suggestions CADOTER, on cherche aussi des idées sur des sites marchands. */
@@ -101,7 +101,7 @@ export default function Assistant() {
               <Link className="link" to={`/personnalise?${new URLSearchParams({ description: form.info || t(form.event), budget: form.budget })}`}>{t("Demander un cadeau personnalisé →")}</Link>
             </div>
           )}
-          {result?.suggestions.map(({ gift, reason }) => (
+          {result?.suggestions.map(({ gift, reason, card }) => (
             <article key={gift.id} className="suggestion">
               <Photo src={gift.image_url} alt={gift.name} />
               <div className="body">
@@ -109,6 +109,7 @@ export default function Assistant() {
                 <h3>{gift.name}</h3>
                 <p className="price">{formatPrice(gift.price, gift.currency)}</p>
                 <p className="why"><b>{t("Pourquoi ce cadeau ?")}</b> {reason}</p>
+                <CardText text={card} />
                 <Link to={`/cadeaux/${gift.slug}`} className="link">{t("Voir ce cadeau →")}</Link>
               </div>
             </article>
@@ -124,6 +125,26 @@ export default function Assistant() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Texte de carte de vœux rédigé par l'IA pour ce cadeau, à copier. */
+function CardText({ text }: { text?: string }) {
+  const { notify } = useStore();
+  if (!text) return null;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); notify(t("Texte copié !")); }
+    catch { notify(t("Copie impossible : sélectionnez le texte pour le copier.")); }
+  };
+
+  return (
+    <div className="card-text">
+      <div className="card-text-head">
+        <b>{t("Texte pour la carte")}</b>
+        <button type="button" className="link" onClick={copy}><Icon name="copy" size={15} />{t("Copier")}</button>
+      </div>
+      <p>{text}</p>
     </div>
   );
 }
@@ -155,6 +176,7 @@ function ExternalIdeas({ ideas, budget }: { ideas: External; budget: number }) {
             <h3>{idea.title}</h3>
             <p className="price">{idea.price == null ? t("Prix sur le site") : idea.currency === "FCFA" ? formatPrice(idea.price) : `${idea.price} ${idea.currency ?? ""}`}</p>
             <p className="why"><b>{t("Pourquoi ce cadeau ?")}</b> {idea.reason}</p>
+            <CardText text={idea.card} />
             <div className="external-actions">
               <a href={idea.url} target="_blank" rel="noopener noreferrer nofollow" className="link">{t("Voir sur {site} ↗", { site: idea.site })}</a>
               <button type="button" className="btn btn-outline" onClick={() => setAdding(idea)}><Icon name="list" size={16} />{t("Ajouter à ma liste")}</button>

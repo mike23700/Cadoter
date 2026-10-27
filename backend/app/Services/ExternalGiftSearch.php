@@ -38,10 +38,12 @@ class ExternalGiftSearch
                         'url' => ['type' => 'string'], 'title' => ['type' => 'string'], 'reason' => ['type' => 'string'],
                         // Le vrai objet demandé et adapté à la personne (un jouet ou un accessoire → false, produit écarté)
                         'fits' => ['type' => 'boolean'],
+                        // Texte de carte de vœux, à copier par l'acheteur
+                        'card' => ['type' => 'string'],
                         // Prix lu dans le texte du résultat : utilisé si la page elle-même ne peut pas être lue
                         'price' => ['type' => ['number', 'null']], 'currency' => ['type' => ['string', 'null']],
                     ],
-                    'required' => ['url', 'title', 'reason', 'fits', 'price', 'currency'],
+                    'required' => ['url', 'title', 'reason', 'fits', 'card', 'price', 'currency'],
                     'additionalProperties' => false,
                 ],
             ],
@@ -81,14 +83,14 @@ class ExternalGiftSearch
     }
 
     /**
-     * @return array<int, array{title: string, url: string, image: ?string, price: ?int, currency: ?string, site: string, reason: string}>
+     * @return array<int, array{title: string, url: string, image: ?string, price: ?int, currency: ?string, site: string, reason: string, card: string}>
      */
     public function search(array $criteria, int $limit = 10): array
     {
         if (! $this->enabled()) {
             return [];
         }
-        $key = 'assistant-ext:v3:'.sha1(json_encode([$criteria, app()->getLocale(), $this->domainGroups(), $limit]));
+        $key = 'assistant-ext:v4:'.sha1(json_encode([$criteria, app()->getLocale(), $this->domainGroups(), $limit]));
 
         return Cache::remember($key, now()->addHours(6), fn () => $this->run($criteria, $limit));
     }
@@ -234,6 +236,11 @@ class ExternalGiftSearch
                         .'pourquoi il convient à cette personne précise (son âge, votre lien, ses goûts) et à l\'occasion, '
                         .'et, pour un site étranger, le point pratique à prévoir (livraison ou importation en Côte d\'Ivoire). '
                         .'Pas de formule creuse ou passe-partout, pas de prix (il est affiché à part). '
+                        ."Écris aussi en $lang le champ "
+                        .'card : le texte d\'une carte de vœux à glisser avec ce cadeau, que l\'acheteur recopiera tel quel : '
+                        .'2 à 4 phrases chaleureuses, écrites par l\'acheteur à la personne (« Maman, … » pour une mère ; tutoiement ou vouvoiement selon le lien), '
+                        .'adaptées à l\'occasion (pour un décès : un message de soutien sobre, jamais de vœux), qui évoquent le cadeau avec délicatesse '
+            .'et ce que la personne aime ; sans prix, sans signature, sans guillemets. '
                         .'Dans price et currency (code ISO, ex. XOF, EUR, USD), recopie le prix écrit dans le résultat de recherche '
                         .'(le plus bas s\'il y a une fourchette), ou null s\'il n\'y figure pas : ne l\'estime jamais. '
                         .'fits : true seulement si la page est bien ce que l\'acheteur cherche, pour cette personne ; '
@@ -246,7 +253,7 @@ class ExternalGiftSearch
                 'response_format' => ['type' => 'json_schema', 'json_schema' => ['name' => 'external_products', 'strict' => true, 'schema' => self::SCHEMA]],
                 'provider' => ['require_parameters' => true],
                 'reasoning' => ['enabled' => false],
-                'max_tokens' => 1500,
+                'max_tokens' => 3000,
             ]);
     }
 
@@ -270,7 +277,7 @@ class ExternalGiftSearch
                 }
 
                 return [
-                    'url' => self::clean($p['url']), 'title' => trim((string) ($p['title'] ?? '')), 'reason' => self::plain((string) ($p['reason'] ?? '')),
+                    'url' => self::clean($p['url']), 'title' => trim((string) ($p['title'] ?? '')), 'reason' => self::plain((string) ($p['reason'] ?? '')), 'card' => self::plain((string) ($p['card'] ?? '')),
                     'price' => $price, 'currency' => $price !== null && is_string($p['currency'] ?? null) ? $p['currency'] : null,
                 ];
             })
@@ -308,6 +315,7 @@ class ExternalGiftSearch
             'currency' => $price === null ? null : ($xof ? 'FCFA' : ($currency ?: null)),
             'site' => Str::after((string) parse_url($p['url'], PHP_URL_HOST), 'www.'),
             'reason' => Str::limit($p['reason'], 600),
+            'card' => Str::limit($p['card'], 700),
         ];
     }
 

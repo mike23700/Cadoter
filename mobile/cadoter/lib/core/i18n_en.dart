@@ -271,6 +271,9 @@ const Map<String, String> en = {
   "Une attention qui lui ressemble.": "A gift that suits them.",
   "Aucune idée dans ce budget pour l’instant. Essayez un budget plus large ou une demande personnalisée.": "No ideas within this budget yet. Try a larger budget or a custom request.",
   "Pourquoi ce cadeau ?": "Why this gift?",
+  "Texte pour la carte": "Card message",
+  "Copier": "Copy",
+  "Texte copié !": "Text copied!",
   "Voir ce cadeau": "See this gift",
   "Affiner mes critères": "Refine my criteria",
 

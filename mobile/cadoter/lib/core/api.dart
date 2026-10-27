@@ -339,9 +339,11 @@ class Meta {
 }
 
 class Suggestion {
-  Suggestion(this.gift, this.reason);
+  Suggestion(this.gift, this.reason, [this.card = '']);
   final Gift gift;
   final String reason;
+  /// Texte de carte de vœux rédigé par l'IA, à copier.
+  final String card;
 }
 
 // ---------------------------------------------------------------- Formats

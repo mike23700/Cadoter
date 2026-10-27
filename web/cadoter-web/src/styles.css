@@ -473,6 +473,11 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 .order-summary .h3 { margin-bottom: 6px; }
 .suggestion .why { background: var(--rose); border-radius: var(--r-md); padding: 12px 14px; color: var(--ink); font-size: 13px; }
 .suggestion .why b { display: block; color: var(--mag); font-size: 12px; margin-bottom: 4px; }
+.suggestion .card-text { align-self: stretch; border: 1px dashed var(--mag); border-radius: var(--r-md); padding: 12px 14px; }
+.suggestion .card-text-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+.suggestion .card-text-head b { color: var(--mag); font-size: 12px; }
+.suggestion .card-text-head button { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.suggestion .card-text p { color: var(--ink); font-size: 14px; font-style: italic; line-height: 1.55; white-space: pre-line; user-select: text; }
 .wrap-card small { font-size: 11px; }
 
 /* ---------- Administration ---------- */

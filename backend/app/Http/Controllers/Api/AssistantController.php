@@ -41,8 +41,9 @@ class AssistantController extends Controller
                 'type' => 'array',
                 'items' => [
                     'type' => 'object',
-                    'properties' => ['id' => ['type' => 'integer'], 'reason' => ['type' => 'string']],
-                    'required' => ['id', 'reason'],
+                    // card : texte de carte de vœux, à copier par l'acheteur
+                    'properties' => ['id' => ['type' => 'integer'], 'reason' => ['type' => 'string'], 'card' => ['type' => 'string']],
+                    'required' => ['id', 'reason', 'card'],
                     'additionalProperties' => false,
                 ],
             ],
@@ -99,7 +100,7 @@ class AssistantController extends Controller
     /**
      * Sélection de l'IA parmi les candidats de la recherche hybride.
      *
-     * @return Collection<int, array{gift: Gift, reason: string}>
+     * @return Collection<int, array{gift: Gift, reason: string, card: string}>
      */
     private function suggestions(array $data): Collection
     {
@@ -115,7 +116,7 @@ class AssistantController extends Controller
         ])->filter()->implode("\n");
 
         // Mêmes critères, même langue → même sélection pendant une heure (ids + raisons seulement)
-        $key = 'assistant:v3:'.sha1(json_encode([$data, app()->getLocale(), config('services.openrouter.model')]));
+        $key = 'assistant:v4:'.sha1(json_encode([$data, app()->getLocale(), config('services.openrouter.model')]));
         $picked = Cache::get($key);
 
         if ($picked === null) {
@@ -144,10 +145,10 @@ class AssistantController extends Controller
             ->where('is_active', true)->where('price', '<=', $data['budget'])->get()->keyBy('id');
 
         return collect($picked)->filter(fn ($p) => isset($gifts[$p['id']]) && $gifts[$p['id']]->available)
-            ->map(fn ($p) => ['gift' => $gifts[$p['id']], 'reason' => $p['reason']])->values();
+            ->map(fn ($p) => ['gift' => $gifts[$p['id']], 'reason' => $p['reason'], 'card' => $p['card'] ?? ''])->values();
     }
 
-    /** @return array<int, array{id: int, reason: string}> */
+    /** @return array<int, array{id: int, reason: string, card: string}> */
     private function pick(string $query, array $data, Collection $candidates): array
     {
         $lang = app()->getLocale() === 'en' ? 'anglais' : 'français';
@@ -176,11 +177,17 @@ class AssistantController extends Controller
             ."Pour chaque cadeau, écris en $lang une raison de 2 à 3 phrases adressée à l'acheteur, qui s'appuie sur toute sa demande : "
             .'ce que le produit contient ou a de concret (d\'après sa description), pourquoi il convient à cette personne précise '
             .'(son âge, votre lien, ses goûts) et à l\'occasion, et le moment ou l\'usage qu\'il lui offrira. '
-            .'Pas de formule creuse ou passe-partout, pas de prix. Si rien ne convient vraiment, renvoie une liste vide.',
+            .'Pas de formule creuse ou passe-partout, pas de prix. '
+            ."Écris aussi en $lang le champ "
+            .'card : le texte d\'une carte de vœux à glisser avec ce cadeau, que l\'acheteur recopiera tel quel : '
+            .'2 à 4 phrases chaleureuses, écrites par l\'acheteur à la personne (« Maman, … » pour une mère ; tutoiement ou vouvoiement selon le lien), '
+            .'adaptées à l\'occasion (pour un décès : un message de soutien sobre, jamais de vœux), qui évoquent le cadeau avec délicatesse '
+            .'et ce que la personne aime ; sans prix, sans signature, sans guillemets. '
+            .'Si rien ne convient vraiment, renvoie une liste vide.',
             "Demande :\n$query\nBudget maximum : {$data['budget']} FCFA\n\nCadeaux disponibles :\n$list",
             'gift_selection',
             self::SELECTION_SCHEMA,
-            1500,
+            2500,
         );
 
         // Objet précis demandé mais absent du catalogue : aucun substitut, même si l'IA en propose
@@ -193,7 +200,7 @@ class AssistantController extends Controller
         return collect($res['data']['suggestions'] ?? [])
             ->filter(fn ($s) => isset($s['id'], $allowed[(int) $s['id']]) && filled($s['reason'] ?? null))
             ->unique(fn ($s) => (int) $s['id'])->take(4)
-            ->map(fn ($s) => ['id' => (int) $s['id'], 'reason' => Str::limit(trim($s['reason']), 600)])
+            ->map(fn ($s) => ['id' => (int) $s['id'], 'reason' => Str::limit(trim($s['reason']), 600), 'card' => Str::limit(trim((string) ($s['card'] ?? '')), 700)])
             ->values()->all();
     }
 }
