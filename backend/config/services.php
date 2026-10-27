@@ -39,6 +39,11 @@ return [
 
     // IA de l'assistante (OpenRouter). Les modèles sont essayés dans l'ordre :
     // le modèle principal, puis les secours si OpenRouter ne peut pas le joindre.
+    // Images des produits externes quand la boutique bloque la lecture de ses pages (ex. Alibaba). Vide = sans images
+    'exa' => [
+        'key' => env('EXA_API_KEY'),
+    ],
+
     'openrouter' => [
         'key' => env('OPENROUTER_API_KEY'),
         'url' => env('OPENROUTER_URL', 'https://openrouter.ai/api/v1'),

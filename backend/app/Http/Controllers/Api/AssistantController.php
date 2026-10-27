@@ -16,9 +16,10 @@ use Throwable;
 
 /**
  * Suggestions de cadeaux de l'assistante.
- *  1. recherche hybride dans le catalogue → ~30 candidats qui respectent budget et ville ;
+ *  1. recherche hybride dans le catalogue (plein texte + vecteurs) → ~30 candidats qui respectent budget et ville ;
  *  2. l'IA (OpenRouter) choisit les 4 meilleurs et explique chaque choix ;
- *  3. si l'IA est indisponible, sélection par règles (ci-dessous) : le client a toujours une réponse.
+ *  3. rien de convenable (ou IA indisponible) → liste vide : le site cherche alors sur des sites marchands.
+ * Aucune raison n'est rédigée à l'avance : chaque explication vient de l'IA.
  */
 class AssistantController extends Controller
 {
@@ -69,18 +70,15 @@ class AssistantController extends Controller
         ]);
     }
 
-    public function suggest(Request $request)
+    public function suggest(Request $request, ExternalGiftSearch $external)
     {
         $data = $this->criteria($request);
-        $forWho = $data['age'] < 13 ? 'Enfants' : (self::RELATION_TO_FOR_WHO[$data['relation']] ?? null);
-
-        $suggestions = $this->aiSuggestions($data, $forWho) ?? $this->ruleSuggestions($data, $forWho);
 
         return response()->json([
             'criteria' => $data,
-            'suggestions' => $suggestions,
+            'suggestions' => $this->suggestions($data),
             // Le site propose des idées hors catalogue quand il y en a moins de 3
-            'external_available' => app(ExternalGiftSearch::class)->enabled(),
+            'external_available' => $external->enabled(),
             'disclaimer' => __('Exemples de suggestions, sans garantie de disponibilité. Prix et disponibilité à confirmer auprès du marchand.'),
         ]);
     }
@@ -92,31 +90,36 @@ class AssistantController extends Controller
             'gender' => ['required', 'string', 'max:20'],
             'age' => ['required', 'integer', 'min:0', 'max:120'],
             'relation' => ['required', 'string', 'max:40'],
-            'budget' => ['required', 'integer', 'min:1000'],
+            'budget' => ['required', 'integer', 'min:1000', 'max:2000000000'],
             'city' => ['nullable', 'string', 'max:80'],
             'info' => ['nullable', 'string', 'max:500'],
         ]);
     }
 
-    /** Sélection par l'IA parmi les candidats de la recherche hybride, ou null si elle échoue. */
-    private function aiSuggestions(array $data, ?string $forWho): ?Collection
+    /**
+     * Sélection de l'IA parmi les candidats de la recherche hybride.
+     *
+     * @return Collection<int, array{gift: Gift, reason: string}>
+     */
+    private function suggestions(array $data): Collection
     {
         if (! $this->ai->enabled()) {
-            return null;
+            return collect();
         }
 
-        $who = trim("{$data['relation']} ({$data['gender']}, {$data['age']} ans)");
         $query = collect([
             "Cadeau pour : {$data['event']}.",
-            "Destinataire : $who.",
-            filled($data['info'] ?? null) ? "Ce qu'il ou elle aime : {$data['info']}" : null,
+            "Destinataire : {$data['relation']} ({$data['gender']}, {$data['age']} ans).",
+            // Texte libre : goûts de la personne ou objet précis que l'acheteur veut offrir
+            filled($data['info'] ?? null) ? "Précisions de l'acheteur : {$data['info']}" : null,
         ])->filter()->implode("\n");
 
         // Mêmes critères, même langue → même sélection pendant une heure (ids + raisons seulement)
-        $key = 'assistant:'.sha1(json_encode([$data, app()->getLocale(), config('services.openrouter.model')]));
+        $key = 'assistant:v3:'.sha1(json_encode([$data, app()->getLocale(), config('services.openrouter.model')]));
         $picked = Cache::get($key);
 
         if ($picked === null) {
+            $forWho = $data['age'] < 13 ? 'Enfants' : (self::RELATION_TO_FOR_WHO[$data['relation']] ?? null);
             $candidates = $this->search->candidates($query, [
                 'budget' => $data['budget'], 'city' => $data['city'] ?? null, 'occasion' => $data['event'], 'for_who' => $forWho,
             ]);
@@ -127,26 +130,21 @@ class AssistantController extends Controller
             try {
                 $picked = $this->pick($query, $data, $candidates);
             } catch (Throwable $e) {
-                Log::warning("Assistante IA indisponible, sélection par règles : {$e->getMessage()}");
+                Log::warning("Assistante IA indisponible : {$e->getMessage()}");
 
-                return null;
+                return collect();
             }
             // Liste vide = l'IA juge que rien ne convient (ex. « une voiture ») : on le respecte,
             // le site cherchera alors des idées ailleurs au lieu de proposer des cadeaux hors sujet
             Cache::put($key, $picked, now()->addHour());
-        }
-        if ($picked === []) {
-            return collect();
         }
 
         // Rechargés à chaque fois : un cadeau retiré ou épuisé entre-temps n'est plus proposé
         $gifts = Gift::with('partner:id,shop_name')->whereKey(array_column($picked, 'id'))
             ->where('is_active', true)->where('price', '<=', $data['budget'])->get()->keyBy('id');
 
-        $out = collect($picked)->filter(fn ($p) => isset($gifts[$p['id']]) && $gifts[$p['id']]->available)
+        return collect($picked)->filter(fn ($p) => isset($gifts[$p['id']]) && $gifts[$p['id']]->available)
             ->map(fn ($p) => ['gift' => $gifts[$p['id']], 'reason' => $p['reason']])->values();
-
-        return $out->isEmpty() ? null : $out;
     }
 
     /** @return array<int, array{id: int, reason: string}> */
@@ -161,24 +159,28 @@ class AssistantController extends Controller
             $g->for_who ? 'pour : '.implode(', ', $g->for_who) : null,
             $g->occasions ? 'occasions : '.implode(', ', $g->occasions) : null,
             $g->ai_tags ? "mots-clés : {$g->ai_tags}" : null,
-            $g->description ? Str::limit($g->description, 220) : null,
+            $g->description ? Str::limit($g->description, 400) : null,
         ])->filter()->implode(' | '))->implode("\n");
 
         $res = $this->ai->json(
             "Tu es l'assistante cadeaux de CADOTER, un site de cadeaux en Côte d'Ivoire. "
-            .'Choisis au maximum 4 cadeaux parmi la liste fournie, les plus adaptés à la personne et à l\'occasion, '
-            .'en variant les idées. Utilise uniquement les numéros (#id) de la liste : n\'invente jamais de produit. '
-            ."Pour chaque cadeau, écris en $lang une raison courte (1 à 2 phrases, sans répéter le prix) adressée à l'acheteur, "
-            .'qui fait le lien avec ce que la personne aime. Si rien ne convient vraiment, renvoie une liste vide. '
-            .'Respecte le sexe de la personne : jamais un produit marqué pour l\'autre sexe (ex. « parfum homme » pour une femme). '
+            .'Lis toute la demande : occasion, lien avec la personne, sexe, âge, budget et précisions de l\'acheteur. '
             .'Avant de choisir, remplis requested_item : l\'objet précis que l\'acheteur veut offrir (« voiture », « iPhone », « voyage »), '
             .'ou une chaîne vide s\'il décrit seulement des goûts (« elle aime le luxe », « il aime la musique »). '
-            .'Puis requested_item_in_list : true seulement si cet objet (ou le même type d\'objet) figure dans la liste. '
-            .'Si un objet précis est demandé et absent, ne propose aucun substitut : suggestions vide.',
+            .'Puis requested_item_in_list : true seulement si ce même objet figure dans la liste '
+            .'(une miniature, un jouet, un accessoire ou un produit dérivé ne compte pas). '
+            .'Si un objet précis est demandé et absent, ne propose aucun substitut : suggestions vide. '
+            .'Sinon, choisis au maximum 4 cadeaux de la liste, vraiment adaptés à cette personne et à l\'occasion, en variant les idées. '
+            .'Utilise uniquement les numéros (#id) de la liste : n\'invente jamais de produit. '
+            .'Respecte le sexe de la personne : jamais un produit marqué pour l\'autre sexe (ex. « parfum homme » pour une femme). '
+            ."Pour chaque cadeau, écris en $lang une raison de 2 à 3 phrases adressée à l'acheteur, qui s'appuie sur toute sa demande : "
+            .'ce que le produit contient ou a de concret (d\'après sa description), pourquoi il convient à cette personne précise '
+            .'(son âge, votre lien, ses goûts) et à l\'occasion, et le moment ou l\'usage qu\'il lui offrira. '
+            .'Pas de formule creuse ou passe-partout, pas de prix. Si rien ne convient vraiment, renvoie une liste vide.',
             "Demande :\n$query\nBudget maximum : {$data['budget']} FCFA\n\nCadeaux disponibles :\n$list",
             'gift_selection',
             self::SELECTION_SCHEMA,
-            1000,
+            1500,
         );
 
         // Objet précis demandé mais absent du catalogue : aucun substitut, même si l'IA en propose
@@ -191,52 +193,7 @@ class AssistantController extends Controller
         return collect($res['data']['suggestions'] ?? [])
             ->filter(fn ($s) => isset($s['id'], $allowed[(int) $s['id']]) && filled($s['reason'] ?? null))
             ->unique(fn ($s) => (int) $s['id'])->take(4)
-            ->map(fn ($s) => ['id' => (int) $s['id'], 'reason' => Str::limit(trim($s['reason']), 400)])
+            ->map(fn ($s) => ['id' => (int) $s['id'], 'reason' => Str::limit(trim($s['reason']), 600)])
             ->values()->all();
-    }
-
-    /** Sélection par règles (sans IA) : occasion, destinataire, mots de la description, budget. */
-    private function ruleSuggestions(array $data, ?string $forWho): Collection
-    {
-        $stop = ['elle', 'aime', 'adore', 'avec', 'pour', 'dans', 'les', 'des', 'une', 'son', 'ses', 'sur', 'qui', 'que', 'est', 'tres', 'beaucoup', 'moments'];
-        // clé = mot sans accents (comparaison), valeur = mot saisi (affichage)
-        $words = collect(preg_split('/[\s,;.!?\'’]+/u', Str::lower($data['info'] ?? '')))
-            ->mapWithKeys(fn ($w) => [Str::ascii($w) => $w])
-            ->filter(fn ($w, $k) => strlen($k) >= 3 && ! in_array($k, $stop, true));
-
-        // Produits explicitement destinés à l'autre sexe (ex. « coffret parfum homme » pour une mère)
-        $other = ['Femme' => 'homme', 'Fille' => 'homme', 'Homme' => 'femme', 'Garçon' => 'femme'][$data['gender']] ?? null;
-
-        return Gift::with('partner:id,shop_name')->where('is_active', true)->where('price', '<=', $data['budget'])
-            ->when($data['city'] ?? null, fn ($q, $c) => $q->where('city', $c))
-            ->get()
-            ->reject(fn (Gift $g) => $other && preg_match('/\b'.$other.'s?\b/u', Str::lower(Str::ascii($g->name.' '.$g->description))))
-            ->map(function (Gift $g) use ($data, $forWho, $words) {
-                $text = Str::lower(Str::ascii($g->name.' '.$g->description));
-                $score = 0;
-                $score += in_array($data['event'], $g->occasions ?? [], true) ? 3 : 0;
-                $score += $forWho && in_array($forWho, $g->for_who ?? [], true) ? 3 : 0;
-                $matches = $words->filter(fn ($w, $k) => str_contains($text, Str::substr($k, 0, 5)))->values();
-                $score += $matches->count() * 2;
-                $score += $g->price / max($data['budget'], 1); // privilégie ce qui exploite le budget
-
-                return ['gift' => $g, 'score' => $score, 'matches' => $matches];
-            })
-            ->sortByDesc('score')->take(4)->values()
-            ->map(fn ($r) => [
-                'gift' => $r['gift'],
-                'reason' => $this->reason($r['gift'], $data, $r['matches']->all()),
-            ]);
-    }
-
-    private function reason(Gift $g, array $d, array $matches): string
-    {
-        $female = in_array($d['gender'], ['Femme', 'Fille'], true);
-        if ($matches) {
-            return __($female ? "En lien avec ce qu'elle aime (:likes) : une attention personnelle, dans votre budget." : "En lien avec ce qu'il aime (:likes) : une attention personnelle, dans votre budget.",
-                ['likes' => implode(', ', array_slice($matches, 0, 3))]);
-        }
-
-        return __("Une attention pensée pour cette personne, idéale pour l'occasion (:event), sans dépasser le budget.", ['event' => Str::lower(__($d['event']))]);
     }
 }
