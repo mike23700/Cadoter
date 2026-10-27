@@ -6,8 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password as PasswordBroker;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AuthController extends Controller
 {
@@ -108,6 +112,49 @@ class AuthController extends Controller
         $request->user()->update(['password' => $data['password']]);
 
         return response()->json(['message' => 'Mot de passe modifié.']);
+    }
+
+    /** Envoie un lien de réinitialisation. Réponse identique que le compte existe ou non. */
+    public function forgotPassword(Request $request)
+    {
+        $data = $request->validate(['email' => ['required', 'email']]);
+
+        try {
+            PasswordBroker::sendResetLink(['email' => strtolower(trim($data['email']))]);
+        } catch (Throwable $exception) {
+            Log::error('Échec d’envoi du lien de réinitialisation.', ['exception' => $exception->getMessage()]);
+            abort(503, __('Impossible d’envoyer l’e-mail pour le moment. Réessayez plus tard.'));
+        }
+
+        return response()->json([
+            'message' => __('Si un compte existe avec cette adresse, un lien de réinitialisation vient d’être envoyé.'),
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', Password::min(8)],
+        ]);
+
+        $status = PasswordBroker::reset(
+            [...$data, 'email' => strtolower(trim($data['email']))],
+            function (User $user, string $password) {
+                $user->forceFill(['password' => $password, 'remember_token' => Str::random(60)])->save();
+                // Déconnecte toutes les sessions existantes
+                $user->tokens()->delete();
+            },
+        );
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            throw ValidationException::withMessages([
+                'email' => __('Ce lien de réinitialisation est invalide ou a expiré.'),
+            ]);
+        }
+
+        return response()->json(['message' => __('Mot de passe réinitialisé. Vous pouvez vous connecter.')]);
     }
 
     private function session(User $user, Request $request): array

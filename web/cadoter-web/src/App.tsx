@@ -22,7 +22,7 @@ import MyOrders from "./pages/MyOrders";
 import Profile from "./pages/Profile";
 import Order from "./pages/Order";
 import Admin from "./pages/Admin";
-import { Login, Signup } from "./pages/Auth";
+import { ForgotPassword, Login, ResetPassword, Signup } from "./pages/Auth";
 
 const nav: [string, string][] = [
   ["/", "Découvrir"],
@@ -193,6 +193,8 @@ export default function App() {
           <Route path="/commander/:slug" element={<Order />} />
           <Route path="/connexion" element={<Login />} />
           <Route path="/inscription" element={<Signup />} />
+          <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+          <Route path="/reinitialiser-mot-de-passe" element={<ResetPassword />} />
           <Route path="/commandes" element={<RequireAuth><MyOrders /></RequireAuth>} />
           <Route path="/l/:code" element={<Shared />} />
           <Route path="/assistante" element={<Assistant />} />

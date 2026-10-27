@@ -54,5 +54,19 @@ services:
         condition: service_healthy
     command: php artisan queue:work --tries=3 --backoff=30 --sleep=3 --max-time=3600
 
+  # Planificateur : rappels e-mail des dates importantes (tous les jours à 08:00)
+  scheduler:
+    image: cadoter-php
+    container_name: cadoter-scheduler
+    restart: unless-stopped
+    user: "${UID:-1000}:${GID:-1000}"
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: php artisan schedule:work
+
 volumes:
   postgres_data:

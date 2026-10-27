@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Mail\PasswordResetLink;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'phone', 'password', 'language', 'role', 'shop_name'])]
@@ -31,6 +33,21 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /** Lien de réinitialisation vers le front (et non une route Laravel). */
+    public function sendPasswordResetNotification($token): void
+    {
+        $url = rtrim((string) config('services.frontend_url'), '/').'/reinitialiser-mot-de-passe?'
+            .http_build_query(['token' => $token, 'email' => $this->email]);
+
+        Mail::to($this->email)
+            ->locale($this->language === 'en' ? 'en' : 'fr')
+            ->send(new PasswordResetLink(
+                user: $this,
+                resetUrl: $url,
+                expiresInMinutes: (int) config('auth.passwords.users.expire'),
+            ));
     }
 
     public function isAdmin(): bool

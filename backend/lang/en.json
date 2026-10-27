@@ -39,5 +39,9 @@
     "Numéro WhatsApp invalide (ex. +225 07 00 00 00 00).": "Invalid WhatsApp number (e.g. +225 07 00 00 00 00).",
     "Indiquez le nom de la boutique.": "Enter the shop name.",
     "Vous ne pouvez pas retirer vos propres droits d'administrateur.": "You cannot remove your own administrator rights.",
-    "Produits vendus par des sites partenaires externes : prix, disponibilité et livraison à vérifier sur leur site.": "Products sold by external websites: check price, availability and delivery on their site."
+    "Produits vendus par des sites partenaires externes : prix, disponibilité et livraison à vérifier sur leur site.": "Products sold by external websites: check price, availability and delivery on their site.",
+    "Impossible d’envoyer l’e-mail pour le moment. Réessayez plus tard.": "The email could not be sent right now. Please try again later.",
+    "Si un compte existe avec cette adresse, un lien de réinitialisation vient d’être envoyé.": "If an account exists with this address, a reset link has just been sent.",
+    "Ce lien de réinitialisation est invalide ou a expiré.": "This reset link is invalid or has expired.",
+    "Mot de passe réinitialisé. Vous pouvez vous connecter.": "Password reset. You can now log in."
 }

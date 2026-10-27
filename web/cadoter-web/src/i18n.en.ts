@@ -608,6 +608,18 @@ const en: Record<string, string> = {
   "Ex. {n}": "e.g. {n}",
   "Prix sur le site": "Price on the website",
   "Voir plus ({n})": "See more ({n})",
+  // Mot de passe oublié
+  "Mot de passe oublié.": "Forgotten password.",
+  "Indiquez l’e-mail de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.": "Enter your account email: we will send you a link to choose a new password.",
+  "Recevoir le lien": "Send me the link",
+  "Retour à la connexion": "Back to login",
+  "Pensez à vérifier vos courriers indésirables. Le lien est valable 60 minutes.": "Remember to check your spam folder. The link is valid for 60 minutes.",
+  "Nouveau mot de passe.": "New password.",
+  "Choisissez un nouveau mot de passe pour {email}.": "Choose a new password for {email}.",
+  "Nouveau mot de passe *": "New password *",
+  "Enregistrer le mot de passe": "Save password",
+  "Ce lien de réinitialisation est invalide ou incomplet.": "This reset link is invalid or incomplete.",
+  "Demander un nouveau lien": "Request a new link",
 };
 
 export default en;

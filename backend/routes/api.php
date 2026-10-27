@@ -25,6 +25,11 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+Route::middleware('throttle:5,1')->group(function () {
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+
 Route::get('/meta', [CatalogController::class, 'meta']);
 Route::get('/gifts', [CatalogController::class, 'gifts']);
 Route::get('/gifts/{slug}', [CatalogController::class, 'gift']);
