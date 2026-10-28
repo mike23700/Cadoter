@@ -30,7 +30,18 @@ class GiftSearchIndex
 
     public function needsIndexing(Gift $gift): bool
     {
-        return $gift->search_hash !== $this->hash($gift)
+        if (! $this->ai->enabled()) {
+            return false;
+        }
+
+        $hashChanged = $gift->search_hash !== $this->hash($gift);
+
+        // MySQL / MariaDB : pas de table gift_embeddings, uniquement les étiquettes IA.
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return $hashChanged;
+        }
+
+        return $hashChanged
             || ! DB::table('gift_embeddings')->where('gift_id', $gift->id)->exists();
     }
 
@@ -42,6 +53,10 @@ class GiftSearchIndex
     /** @param  Collection<int, Gift>  $gifts */
     public function indexMany(Collection $gifts, bool $force = false): int
     {
+        if (! $this->ai->enabled()) {
+            return 0;
+        }
+
         $todo = $force ? $gifts : $gifts->filter(fn (Gift $g) => $this->needsIndexing($g));
         if ($todo->isEmpty()) {
             return 0;
@@ -52,6 +67,18 @@ class GiftSearchIndex
             $tags = $this->tags($gift);
             $enriched[$gift->id] = $tags !== null;
             $gift->ai_tags = $tags ?? $gift->ai_tags;
+        }
+
+        // MySQL / MariaDB : on enregistre les étiquettes, sans vecteurs.
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            DB::transaction(function () use ($todo, $enriched) {
+                foreach ($todo as $gift) {
+                    $gift->search_hash = $enriched[$gift->id] ? $this->hash($gift) : null;
+                    $gift->saveQuietly();
+                }
+            });
+
+            return $todo->count();
         }
 
         $vectors = $this->ai->embed($todo->map(fn (Gift $g) => $this->embeddingText($g))->all());

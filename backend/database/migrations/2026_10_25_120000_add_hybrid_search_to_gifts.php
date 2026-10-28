@@ -4,16 +4,26 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Recherche hybride des cadeaux (assistante IA) :
- *  - plein texte français, sans accents (colonne générée + index GIN) ;
- *  - similarité de sens par vecteurs pgvector (table à part pour ne pas alourdir
- *    les requêtes du catalogue, demi-précision + index HNSW) ;
- *  - étiquettes ajoutées par l'IA (ai_tags) pour enrichir les fiches pauvres.
- * Nécessite l'image Docker pgvector/pgvector:pg16.
+ * Recherche hybride des cadeaux (assistante IA).
+ *
+ * PostgreSQL (pgvector) : plein texte français (tsvector) + vecteurs halfvec/HNSW.
+ *
+ * MySQL / MariaDB (IONOS) : pas de pgvector. On ajoute les colonnes nécessaires
+ * et un index FULLTEXT ; GiftSearch utilise le plein texte + les critères
+ * structurés, GiftSearchIndex ne stocke que les étiquettes IA (pas de vecteurs).
  */
 return new class extends Migration
 {
     public function up(): void
+    {
+        match (DB::connection()->getDriverName()) {
+            'pgsql' => $this->upPostgres(),
+            'mysql', 'mariadb' => $this->upMysql(),
+            default => $this->upFallback(),
+        };
+    }
+
+    private function upPostgres(): void
     {
         $dims = (int) config('services.openrouter.embedding_dimensions', 1024);
 
@@ -48,11 +58,40 @@ return new class extends Migration
         DB::statement('CREATE INDEX gift_embeddings_hnsw_idx ON gift_embeddings USING hnsw (embedding halfvec_cosine_ops)');
     }
 
+    private function upMysql(): void
+    {
+        DB::statement('ALTER TABLE gifts ADD COLUMN ai_tags TEXT NULL');
+        DB::statement('ALTER TABLE gifts ADD COLUMN search_hash VARCHAR(64) NULL');
+        // Recherche plein texte MySQL/MariaDB (InnoDB).
+        DB::statement('ALTER TABLE gifts ADD FULLTEXT INDEX gifts_fulltext_idx (name, description, category, ai_tags)');
+    }
+
+    private function upFallback(): void
+    {
+        DB::statement('ALTER TABLE gifts ADD COLUMN ai_tags TEXT NULL');
+        DB::statement('ALTER TABLE gifts ADD COLUMN search_hash VARCHAR(64) NULL');
+    }
+
     public function down(): void
     {
-        DB::statement('DROP TABLE IF EXISTS gift_embeddings');
-        DB::statement('DROP INDEX IF EXISTS gifts_search_vector_idx');
-        DB::statement('ALTER TABLE gifts DROP COLUMN IF EXISTS search_vector, DROP COLUMN IF EXISTS search_hash, DROP COLUMN IF EXISTS ai_tags');
-        DB::statement('DROP FUNCTION IF EXISTS immutable_unaccent(text)');
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            DB::statement('DROP TABLE IF EXISTS gift_embeddings');
+            DB::statement('DROP INDEX IF EXISTS gifts_search_vector_idx');
+            DB::statement('ALTER TABLE gifts DROP COLUMN IF EXISTS search_vector, DROP COLUMN IF EXISTS search_hash, DROP COLUMN IF EXISTS ai_tags');
+            DB::statement('DROP FUNCTION IF EXISTS immutable_unaccent(text)');
+
+            return;
+        }
+
+        if (in_array($driver, ['mysql', 'mariadb'], true)) {
+            DB::statement('ALTER TABLE gifts DROP INDEX gifts_fulltext_idx');
+            DB::statement('ALTER TABLE gifts DROP COLUMN ai_tags, DROP COLUMN search_hash');
+
+            return;
+        }
+
+        DB::statement('ALTER TABLE gifts DROP COLUMN ai_tags, DROP COLUMN search_hash');
     }
 };

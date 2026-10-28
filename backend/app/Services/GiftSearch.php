@@ -70,6 +70,36 @@ class GiftSearch
         if ($words->isEmpty()) {
             return [];
         }
+        // MySQL / MariaDB : index FULLTEXT (pas de tsvector).
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            $terms = $words->map(fn ($w) => '+'.$w.'*')->implode(' ');
+
+            try {
+                return $this->base($filters)
+                    ->whereRaw('MATCH(name, description, category, ai_tags) AGAINST (? IN BOOLEAN MODE)', [$terms])
+                    ->orderByRaw('MATCH(name, description, category, ai_tags) AGAINST (? IN BOOLEAN MODE) DESC', [$terms])
+                    ->limit(self::PER_RANKING)->pluck('id')->all();
+            } catch (Throwable $e) {
+                Log::warning("Recherche plein texte MySQL indisponible : {$e->getMessage()}");
+
+                // Repli sans index FULLTEXT (migration non appliquée, moteur sans FULLTEXT…)
+                return $this->base($filters)
+                    ->where(function ($q) use ($words) {
+                        $first = true;
+                        foreach ($words as $w) {
+                            if ($first) {
+                                $q->whereRaw('LOWER(name) LIKE ?', ['%'.$w.'%']);
+                                $first = false;
+                            } else {
+                                $q->orWhereRaw('LOWER(name) LIKE ?', ['%'.$w.'%']);
+                            }
+                            $q->orWhereRaw('LOWER(description) LIKE ?', ['%'.$w.'%']);
+                        }
+                    })
+                    ->limit(self::PER_RANKING)->pluck('id')->all();
+            }
+        }
+
         $tsquery = $words->implode(' | ');
 
         return $this->base($filters)
@@ -82,6 +112,11 @@ class GiftSearch
     private function semantic(string $query, array $filters): array
     {
         if (! $this->ai->enabled() || trim($query) === '') {
+            return [];
+        }
+
+        // pgvector uniquement : sur MySQL/MariaDB on garde le plein texte + les critères.
+        if (DB::connection()->getDriverName() !== 'pgsql') {
             return [];
         }
 
@@ -112,6 +147,16 @@ class GiftSearch
     {
         $occasion = $filters['occasion'] ?? null;
         $forWho = $filters['for_who'] ?? null;
+
+        // MySQL / MariaDB : JSON_CONTAINS au lieu de l'opérateur jsonb de PostgreSQL.
+        if (in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return $this->base($filters)
+                ->orderByRaw('(CASE WHEN JSON_CONTAINS(occasions, JSON_QUOTE(?)) THEN 1 ELSE 0 END)
+                    + (CASE WHEN JSON_CONTAINS(for_who, JSON_QUOTE(?)) THEN 1 ELSE 0 END) DESC',
+                    [$occasion, $forWho])
+                ->orderByDesc('is_featured')->latest()
+                ->limit(self::PER_RANKING)->pluck('id')->all();
+        }
 
         return $this->base($filters)
             ->orderByRaw('(CASE WHEN ?::text IS NOT NULL AND occasions::jsonb @> to_jsonb(?::text) THEN 1 ELSE 0 END)
