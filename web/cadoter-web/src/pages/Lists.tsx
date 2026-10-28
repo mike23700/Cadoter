@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, ApiError, formatDate, formatPrice, Gift, GiftList, ItemStatus, ListItem } from "../api";
+import { api, ApiError, formatDate, formatPrice, Gift, GiftList, ItemStatus, ListItem, primaryImageUrl } from "../api";
 import { Badge, Breadcrumb, ErrorBox, Field, fieldError, IllustrativeNote, Loading, Modal, Photo } from "../components";
 import { Icon } from "../icons";
 import { t, tn } from "../i18n";
@@ -174,7 +174,7 @@ function ListDetail({ list, onChange, refresh, onDeleted }: { list: GiftList; on
       {list.items.length === 0 && <div className="empty">{t("Votre liste est vide pour le moment.")}</div>}
       {list.items.map(item => (
         <div key={item.id} className="list-row">
-          {item.image_url ? <img src={item.image_url} alt="" /> : <div className="photo-empty thumb"><Icon name="gift" /></div>}
+          {primaryImageUrl(item) ? <img src={primaryImageUrl(item)!} alt="" /> : <div className="photo-empty thumb"><Icon name="gift" /></div>}
           <div>
             <h4>{item.gift_slug ? <Link to={`/cadeaux/${item.gift_slug}`}>{item.name}</Link> : item.external_url ? <a href={item.external_url} target="_blank" rel="noreferrer noopener">{item.name}</a> : item.name}</h4>
             <p>{[item.city, item.area, item.price == null ? null : formatPrice(item.price, item.currency)].filter(Boolean).join(" · ")}</p>
@@ -262,7 +262,7 @@ function GiftPicker({ list, onClose, refresh }: { list: GiftList; onClose: () =>
           {visibleGifts.map(gift => {
             const added = addedIds.has(gift.id);
             return <div className="gift-picker-row" key={gift.id}>
-              <Photo src={gift.image_url} alt={gift.name} />
+              <Photo src={primaryImageUrl(gift)} alt={gift.name} />
               <div className="gift-picker-info">
                 <b>{gift.name}</b>
                 <span>{gift.seller_name} · {formatPrice(gift.price, gift.currency)}</span>

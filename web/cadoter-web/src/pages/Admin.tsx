@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
-import { AdminFaq, api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, User, Wrapping } from "../api";
+import { AdminFaq, api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, primaryImageUrl, User, Wrapping } from "../api";
 import { ErrorBox, Field, fieldError, LangSwitch, Loading, Modal } from "../components";
 import { t } from "../i18n";
 import { Icon } from "../icons";
@@ -246,7 +246,7 @@ function Gifts() {
             <tbody>
               {data?.map(g => (
                 <tr key={g.id}>
-                  <td className="cell-thumb">{g.image_url && <img src={g.image_url} alt="" className="table-thumb" />}</td>
+                  <td className="cell-thumb">{primaryImageUrl(g) && <img src={primaryImageUrl(g)!} alt="" className="table-thumb" />}</td>
                   <td className="cell-main"><b>{g.name}</b><br /><span className="note">{(g.occasions ?? []).map(o => t(o)).join(", ")}</span></td>
                   {!isPartner && <td data-label={t("Vendeur")}>{g.seller_name}</td>}
                   <td data-label={t("Prix")}>{formatPrice(g.price, g.currency)}</td>

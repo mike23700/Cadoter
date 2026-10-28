@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, formatPrice, Gift, giftPlace, Order as OrderT } from "../api";
+import { api, ApiError, formatPrice, Gift, giftPlace, Order as OrderT, primaryImageUrl } from "../api";
 import { Breadcrumb, ErrorBox, Field, fieldError, Loading, Photo } from "../components";
 import { Icon } from "../icons";
 import { t } from "../i18n";
@@ -104,7 +104,7 @@ export default function Order() {
 
         <div>
           <div className="order-summary">
-            <Photo src={gift.image_url} alt={gift.name} />
+            <Photo src={primaryImageUrl(gift)} alt={gift.name} />
             <div>
               <h3 className="h3">{gift.name}</h3>
               <p className="muted small">{giftPlace(gift)}</p>

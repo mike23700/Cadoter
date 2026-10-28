@@ -1,6 +1,6 @@
 import { Component, ErrorInfo, ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, formatPrice, Gift, giftPlace, ItemStatus } from "./api";
+import { ApiError, formatPrice, Gift, giftPlace, ItemStatus, primaryImageUrl, resolveImageUrl } from "./api";
 import { reportError } from "./diagnostics";
 import { LANGS, t } from "./i18n";
 import { Icon } from "./icons";
@@ -15,7 +15,7 @@ export function Badge({ status, children }: { status?: ItemStatus; children?: Re
 export function GiftCard({ gift }: { gift: Gift }) {
   return (
     <Link to={`/cadeaux/${gift.slug}`} className="gift-card">
-      <Photo src={gift.image_url} alt={gift.name} />
+      <Photo src={primaryImageUrl(gift)} alt={gift.name} />
       <Badge status={gift.available ? "Disponible" : "Indisponible"} />
       <h3>{gift.name}</h3>
       <p className="seller-name">{t("Vendu par")} <strong>{gift.seller_name}</strong></p>
@@ -26,8 +26,9 @@ export function GiftCard({ gift }: { gift: Gift }) {
 }
 
 export function Photo({ src, alt = "", className = "" }: { src: string | null | undefined; alt?: string; className?: string }) {
-  return src
-    ? <img className={`photo ${className}`} src={src} alt={alt} loading="lazy" />
+  const resolved = resolveImageUrl(src);
+  return resolved
+    ? <img className={`photo ${className}`} src={resolved} alt={alt} loading="lazy" />
     : <div className={`photo photo-empty ${className}`} aria-hidden="true"><Icon name="gift" size={32} /></div>;
 }
 

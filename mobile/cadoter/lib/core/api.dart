@@ -11,18 +11,45 @@ import 'i18n.dart';
 /// Par défaut : 10.0.2.2 = machine hôte vue depuis l'émulateur Android.
 String get apiUrl {
   const fromEnv = String.fromEnvironment('API_URL');
-  if (fromEnv.isNotEmpty) return fromEnv;
+  if (fromEnv.isNotEmpty) return fromEnv.replaceFirst(RegExp(r'/$'), '');
+  // Release build without --dart-define → production API.
+  if (kReleaseMode) return 'https://cadoter-api.cwen-network.org/api';
   if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8001/api';
   return 'http://localhost:8001/api';
 }
 
-/// Les URL d'images renvoyées par l'API pointent sur localhost : on les réécrit vers l'hôte de l'API.
+/// Resolves an image URL: absolute external URLs are used directly; relative
+/// storage paths are prefixed with the API; legacy "…/storage/https://…" values
+/// are unwrapped.
 String? fixUrl(String? url) {
   if (url == null) return null;
+
+  final embedded = RegExp(r'/storage/(https?://.+)$').firstMatch(url);
+  if (embedded != null) return embedded.group(1);
+
   final api = Uri.parse(apiUrl);
   final u = Uri.tryParse(url);
-  if (u == null || (u.host != 'localhost' && u.host != '127.0.0.1')) return url;
-  return u.replace(host: api.host, port: api.port).toString();
+  if (u == null) return url;
+
+  if (u.hasScheme) {
+    if (u.host != 'localhost' && u.host != '127.0.0.1') return url;
+    return Uri(
+      scheme: api.scheme,
+      host: api.host,
+      port: api.hasPort ? api.port : null,
+      path: u.path,
+      query: u.query.isEmpty ? null : u.query,
+      fragment: u.fragment.isEmpty ? null : u.fragment,
+    ).toString();
+  }
+
+  final path = url.startsWith('/') ? url : '/storage/${url.replaceFirst(RegExp(r'^/+'), '')}';
+  return Uri(
+    scheme: api.scheme,
+    host: api.host,
+    port: api.hasPort ? api.port : null,
+    path: path,
+  ).toString();
 }
 
 class ApiException implements Exception {

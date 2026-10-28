@@ -1,6 +1,6 @@
 import { FormEvent, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, formatPrice, Gift, GiftList } from "../api";
+import { api, formatPrice, Gift, GiftList, primaryImageUrl } from "../api";
 import { Badge, ErrorBox, Field, fieldError, IllustrativeNote, Loading, Modal, Photo } from "../components";
 import { Icon } from "../icons";
 import { t } from "../i18n";
@@ -103,7 +103,7 @@ export default function Assistant() {
           )}
           {result?.suggestions.map(({ gift, reason, card }) => (
             <article key={gift.id} className="suggestion">
-              <Photo src={gift.image_url} alt={gift.name} />
+              <Photo src={primaryImageUrl(gift)} alt={gift.name} />
               <div className="body">
                 <Badge>{t("Disponible")} · {gift.city}</Badge>
                 <h3>{gift.name}</h3>

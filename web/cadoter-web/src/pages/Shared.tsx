@@ -1,6 +1,6 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, ApiError, formatPrice, GiftList, ListItem } from "../api";
+import { api, ApiError, formatPrice, GiftList, ListItem, primaryImageUrl } from "../api";
 import { Badge, ErrorBox, Field, IllustrativeNote, Loading, Modal, Photo } from "../components";
 import { Icon } from "../icons";
 import { t } from "../i18n";
@@ -78,7 +78,7 @@ export default function Shared() {
           const free = item.status === "Disponible";
           return (
             <div key={item.id} className="shared-row">
-              {item.image_url ? <img src={item.image_url} alt="" /> : <div className="photo-empty thumb"><Icon name="gift" /></div>}
+              {primaryImageUrl(item) ? <img src={primaryImageUrl(item)!} alt="" /> : <div className="photo-empty thumb"><Icon name="gift" /></div>}
               <div>
                 <h4>{item.name}</h4>
                 {item.price != null && <p className="price small" style={{ marginBottom: 8 }}>{formatPrice(item.price, item.currency)}</p>}

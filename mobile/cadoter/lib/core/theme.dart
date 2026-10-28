@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   static const Color magenta = Color(0xFFC90091);
   static const Color dark = Color(0xFF30232C);
+  static const Color ink = dark;
   static const Color gray = Color(0xFF786C74);
   static const Color cream = Color(0xFFFAF7F2);
   static const Color white = Color(0xFFFFFFFF);

@@ -1,0 +1,28 @@
+# ============================================================
+# CADOTER — React SPA (Apache / IONOS)
+# ------------------------------------------------------------
+# Le domaine doit pointer sur le dossier qui contient CE fichier
+# et index.html (contenu de dist/).
+#
+# Ne pas utiliser le .htaccess de Laravel ici : il réécrit vers
+# index.php et provoque une erreur 500 sur les routes React.
+# ============================================================
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 1. Les fichiers et dossiers existants sont servis tels quels
+    #    (assets/*.js, *.css, img/, favicon, robots.txt…).
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # 2. Aperçu Open Graph pour les robots (WhatsApp, Facebook, Telegram…) :
+    #    l'API renvoie une page HTML avec les balises OG de la liste.
+    RewriteCond %{HTTP_USER_AGENT} (whatsapp|facebookexternalhit|facebot|meta-externalagent|twitterbot|telegrambot|slackbot|discordbot|linkedinbot|skypeuripreview|pinterest|googlebot|bingbot|embedly|vkshare|snapchat) [NC]
+    RewriteRule ^l/([^/]+)/?$ https://cadoter-api.cwen-network.org/apercu/l/$1 [R=302,L]
+
+    # 3. Toute autre URL est gérée par React Router.
+    RewriteRule ^ index.html [L]
+</IfModule>

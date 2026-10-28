@@ -1,7 +1,49 @@
 // Client de l'API Laravel (Sanctum, jeton Bearer).
 import { getLang, locale, t } from "./i18n";
 
-export const API_URL: string = import.meta.env.VITE_API_URL ?? "http://localhost:8001/api";
+const DEFAULT_API_URL = import.meta.env.PROD
+  ? "https://cadoter-api.cwen-network.org/api"
+  : "http://localhost:8001/api";
+export const API_URL: string = (import.meta.env.VITE_API_URL ?? DEFAULT_API_URL).replace(/\/+$/, "");
+
+const API_ORIGIN = (() => {
+  try { return new URL(API_URL, window.location.origin).origin; } catch { return ""; }
+})();
+
+/**
+ * Image URL resolver:
+ * - absolute URL (https://picsum.photos/..., data:, blob:) → used directly;
+ * - legacy API value "https://api.example/storage/https://..." → extracts the external URL;
+ * - relative storage path ("gifts/x.jpg", "/storage/x.jpg") → prefixed with the API.
+ */
+const absoluteImageUrl = (src: string): string => {
+  // Legacy backend value: https://api…/storage/https://external/image.jpg
+  const embedded = src.match(/\/storage\/(https?:\/\/.+)$/i);
+  if (embedded) return embedded[1];
+  if (/^(https?:|data:|blob:)/i.test(src)) {
+    try {
+      const url = new URL(src);
+      // Images stored by a local backend (APP_URL=localhost) must follow the production API.
+      if ((url.hostname === "localhost" || url.hostname === "127.0.0.1") && url.pathname.startsWith("/storage/")) {
+        return `${API_ORIGIN}${url.pathname}${url.search}`;
+      }
+    } catch { /* invalid URL: keep as-is */ }
+    return src;
+  }
+  if (src.startsWith("/img/") || src.startsWith("/assets/") || src.startsWith("assets/")) return src;
+  if (src.startsWith("/storage/") || src.startsWith("storage/")) {
+    return `${API_ORIGIN}/${src.replace(/^\/+/, "")}`;
+  }
+  return `${API_ORIGIN}/storage/${src.replace(/^\/+/, "")}`;
+};
+
+export const resolveImageUrl = (src?: string | null): string | null =>
+  src ? absoluteImageUrl(src) : null;
+
+/** First available image for an entity: `image_url`, then the `image_urls` gallery. */
+export const primaryImageUrl = (entity?: { image_url?: string | null; image_urls?: string[] | null } | null): string | null =>
+  entity?.image_url ?? entity?.image_urls?.[0] ?? null;
+
 const TOKEN_KEY = "cadoter:token";
 
 export type User = { id: number; name: string; email: string; phone: string | null; role: "user" | "admin" | "partner"; shop_name?: string | null; language: string };
@@ -53,6 +95,7 @@ export type ListItem = {
   city: string | null;
   area: string | null;
   image_url: string | null;
+  image_urls?: string[];
   external_url: string | null;
   reserved_by_name: string | null;
 };
@@ -115,18 +158,24 @@ export const token = {
 
 type Body = Record<string, unknown> | FormData | undefined;
 
-// Les URLs d'images renvoyées par l'API sont absolues (APP_URL, ex. ngrok).
-// On les repasse en chemin relatif pour qu'elles passent par le proxy Vite
-// et évitent la page d'avertissement ngrok en local.
-const localizeStorageUrls = (value: unknown): unknown => {
+// Normalise les URLs d'images renvoyées par l'API :
+// - URL externe ou absolue (CDN, APP_URL/storage/...) → conservée telle quelle ;
+// - ancienne valeur "https://api/storage/https://..." → on extrait l'URL externe ;
+// - chemin de stockage relatif → conservé, puis résolu par resolveImageUrl().
+const looksLikeStorageUrl = (value: string): boolean =>
+  /^\/?storage\//i.test(value) ||
+  /^https?:\/\//i.test(value) && value.includes("/storage/") ||
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(value);
+
+const normalizeImageUrls = (value: unknown): unknown => {
   if (typeof value === "string") {
-    const i = value.indexOf("/storage/");
-    return i > 0 && /^https?:\/\//.test(value) ? value.slice(i) : value;
+    // Rewrite only storage-like values so text fields are never altered.
+    return looksLikeStorageUrl(value) ? absoluteImageUrl(value) : value;
   }
-  if (Array.isArray(value)) return value.map(localizeStorageUrls);
+  if (Array.isArray(value)) return value.map(normalizeImageUrls);
   if (value && typeof value === "object") {
     for (const key of Object.keys(value)) {
-      (value as Record<string, unknown>)[key] = localizeStorageUrls((value as Record<string, unknown>)[key]);
+      (value as Record<string, unknown>)[key] = normalizeImageUrls((value as Record<string, unknown>)[key]);
     }
   }
   return value;
@@ -152,7 +201,7 @@ export async function api<T>(path: string, opts: { method?: string; body?: Body;
     if (res.status === 401) token.set(null);
     throw new ApiError(data?.message ?? t("Une erreur est survenue."), res.status, data?.errors ?? {}, data);
   }
-  return localizeStorageUrls(data) as T;
+  return normalizeImageUrls(data) as T;
 }
 
 export const qs = (params: Record<string, string | number | boolean | undefined | null>) => {

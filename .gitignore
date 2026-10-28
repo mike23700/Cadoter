@@ -13,9 +13,14 @@ ios/Pods/
 !pubspec.lock
 !composer.lock
 
+# Build outputs
+mobile/cadoter/dist/
+dbs16264142.sql
+
 # Web / Vite
 web/cadoter-web/node_modules/
 web/cadoter-web/dist/
+web/cadoter-web/dist.zip
 web/cadoter-web/.vite/
 *.local
 
@@ -31,6 +36,7 @@ Thumbs.db
 
 # Env / secrets
 .env
+.env.production
 *.key
 *.pem
 
