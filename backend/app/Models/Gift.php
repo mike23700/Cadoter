@@ -57,9 +57,22 @@ class Gift extends Model
         });
     }
 
+    /** URL publique d'une image : chemin local (storage) ou URL externe. */
+    private function publicImageUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return preg_match('#^https?://#i', $path) ? $path : Storage::disk('public')->url($path);
+    }
+
     public function getImageUrlAttribute(): ?string
     {
-        return $this->image_path ? Storage::disk('public')->url($this->image_path) : null;
+        $path = $this->image_path
+            ?: (is_array($this->image_paths) ? ($this->image_paths[0] ?? null) : null);
+
+        return $this->publicImageUrl($path);
     }
 
     public function getImageUrlsAttribute(): array
@@ -69,7 +82,8 @@ class Gift extends Model
         return collect($paths)
             ->filter()
             ->unique()
-            ->map(fn (string $path) => Storage::disk('public')->url($path))
+            ->map(fn (string $path) => $this->publicImageUrl($path))
+            ->filter()
             ->values()
             ->all();
     }
