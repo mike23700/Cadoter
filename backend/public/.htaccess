@@ -1,25 +1,30 @@
+# CADOTER — Laravel front controller (Apache / IONOS)
+# Place this file next to the index.php that answers /index.php/api/...
+# Remove any other rewrite .htaccess in a parent directory.
+
+DirectoryIndex index.php
+
 <IfModule mod_rewrite.c>
-    <IfModule mod_negotiation.c>
-        Options -MultiViews -Indexes
-    </IfModule>
-
     RewriteEngine On
+    RewriteBase /
 
-    # Handle Authorization Header
+    # Authorization header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-    # Handle X-XSRF-Token Header
+    # XSRF header
     RewriteCond %{HTTP:x-xsrf-token} .
     RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
 
-    # Redirect Trailing Slashes If Not A Folder...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_URI} (.+)/$
-    RewriteRule ^ %1 [L,R=301]
+    # API requests must always reach Laravel,
+    # even if an old physical /api directory exists.
+    RewriteRule ^api(/.*)?$ index.php [L,NC]
 
-    # Send Requests To Front Controller...
-    RewriteCond %{REQUEST_FILENAME} !-d
-    RewriteCond %{REQUEST_FILENAME} !-f
+    # Serve existing files and directories directly
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Everything else goes to the front controller
     RewriteRule ^ index.php [L]
 </IfModule>
