@@ -84,6 +84,15 @@ export type Meta = {
   contact: { whatsapp: string | null };
 };
 
+export type Paginated<T> = { data: T[]; current_page: number; last_page: number; per_page: number; total: number };
+
+export type Article = { id: number; slug: string; tag: string; title: string; excerpt: string | null; image_url: string | null; minutes: number; created_at: string; body?: string[] };
+export type AdminArticle = {
+  id: number; slug: string; tag: string; title: string; excerpt: string | null; body: string;
+  tag_en: string | null; title_en: string | null; excerpt_en: string | null; body_en: string | null;
+  minutes: number | null; is_active: boolean; image_url: string | null; created_at: string;
+};
+
 export type Faq = { id: number; question: string; answer: string };
 export type AdminFaq = Faq & { question_en: string | null; answer_en: string | null; position: number; is_active: boolean };
 
@@ -109,6 +118,7 @@ export class ApiError extends Error {
 export const token = {
   get: () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
   set: (t: string | null) => {
+    clearApiCache(); // autre utilisateur : les données en cache ne sont plus les siennes
     try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch { /* stockage indisponible */ }
   },
 };
@@ -140,11 +150,15 @@ export async function api<T>(path: string, opts: { method?: string; body?: Body;
   if (opts.body instanceof FormData) body = opts.body;
   else if (opts.body) { body = JSON.stringify(opts.body); headers["Content-Type"] = "application/json"; }
 
+  const method = opts.method ?? (body ? "POST" : "GET");
   let res: Response;
   try {
-    res = await fetch(`${API_URL}${path}`, { method: opts.method ?? (body ? "POST" : "GET"), headers, body });
+    res = await fetch(`${API_URL}${path}`, { method, headers, body });
   } catch {
     throw new ApiError(t("Impossible de joindre le serveur. Vérifiez que l'API est démarrée."), 0);
+  } finally {
+    // Toute écriture peut modifier des données déjà lues : on repart d'un cache vide
+    if (method !== "GET") clearApiCache();
   }
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
@@ -153,6 +167,34 @@ export async function api<T>(path: string, opts: { method?: string; body?: Body;
     throw new ApiError(data?.message ?? t("Une erreur est survenue."), res.status, data?.errors ?? {}, data);
   }
   return localizeStorageUrls(data) as T;
+}
+
+// Cache mémoire des lectures (GET) : une page déjà vue (filtres, fiche cadeau…) s'affiche
+// sans nouvel appel tant qu'elle a moins de 5 min et qu'aucune écriture n'a eu lieu.
+// L'administration n'est jamais mise en cache (commandes et demandes arrivent en continu).
+const CACHE_TTL = 5 * 60_000;
+const cache = new Map<string, { at: number; promise: Promise<unknown>; value?: unknown }>();
+const cacheKey = (path: string) => `${getLang()}|${path}`;
+const cacheable = (path: string) => !path.startsWith("/admin");
+
+export function clearApiCache() { cache.clear(); }
+
+/** Donnée déjà chargée et encore fraîche pour ce chemin, sinon undefined. */
+export function peekApi<T>(path: string): T | undefined {
+  const hit = cache.get(cacheKey(path));
+  return hit && Date.now() - hit.at < CACHE_TTL ? (hit.value as T | undefined) : undefined;
+}
+
+/** GET avec cache ; les appels simultanés au même chemin partagent la même requête. */
+export function cachedApi<T>(path: string, force = false): Promise<T> {
+  if (!cacheable(path)) return api<T>(path);
+  const key = cacheKey(path);
+  const hit = cache.get(key);
+  if (!force && hit && Date.now() - hit.at < CACHE_TTL) return hit.promise as Promise<T>;
+  const entry: { at: number; promise: Promise<unknown>; value?: unknown } = { at: Date.now(), promise: api<T>(path) };
+  cache.set(key, entry);
+  entry.promise.then(v => { entry.value = v; }, () => { if (cache.get(key) === entry) cache.delete(key); });
+  return entry.promise as Promise<T>;
 }
 
 export const qs = (params: Record<string, string | number | boolean | undefined | null>) => {

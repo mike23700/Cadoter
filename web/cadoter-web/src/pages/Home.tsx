@@ -1,8 +1,8 @@
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { formatPrice, Gift } from "../api";
-import { ErrorBox, GiftCard, GiftGridSkeleton, IllustrativeNote } from "../components";
-import { articles, occasionsHome as occasions } from "../data";
+import { Article, formatPrice, Gift } from "../api";
+import { ErrorBox, GiftCard, GiftGridSkeleton, IllustrativeNote, Photo } from "../components";
+import { occasionsHome as occasions } from "../data";
 import { t } from "../i18n";
 import { Icon, IconName } from "../icons";
 import { useApi, useStore } from "../store";
@@ -15,6 +15,7 @@ export default function Home() {
   const nav = useNavigate();
   const { meta, user } = useStore();
   const { data: gifts, error, loading, reload } = useApi<Gift[]>("/gifts?featured=1&limit=6");
+  const { data: articles } = useApi<Article[]>("/inspirations");
   const cities = meta?.cities ?? ["Abidjan"];
   const forWho = meta?.for_who ?? ["Enfants", "Parents", "Couple", "Ami(e)s", "Collègue", "Famille"];
   const [q, setQ] = useState("");
@@ -139,11 +140,11 @@ export default function Home() {
           <Link to="/inspirations" className="link">{t("Tous les articles →")}</Link>
         </div>
         <div className="articles" style={{ marginTop: 32 }}>
-          {articles.slice(0, 3).map(a => (
+          {(articles ?? []).slice(0, 3).map(a => (
             <Link key={a.slug} to={`/inspirations/${a.slug}`} className="article">
-              <img className="photo" src={a.image} alt="" loading="lazy" />
-              <p className="eyebrow">{t(a.tag)}</p>
-              <h3>{t(a.title)}</h3>
+              <Photo src={a.image_url} />
+              <p className="eyebrow">{a.tag}</p>
+              <h3>{a.title}</h3>
               <span className="link-plain">{t("Lire l'article →")}</span>
             </Link>
           ))}

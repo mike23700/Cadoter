@@ -1,4 +1,4 @@
-import { Component, ErrorInfo, ReactNode, useEffect } from "react";
+import { Component, ErrorInfo, Fragment, ReactNode, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, formatPrice, Gift, giftPlace, ItemStatus } from "./api";
 import { reportError } from "./diagnostics";
@@ -78,6 +78,24 @@ export function GiftGridSkeleton({ n = 3 }: { n?: number }) {
         <div key={i} className="gift-card skeleton"><div className="photo" /><span /><span /></div>
       ))}
     </div>
+  );
+}
+
+/** Pages 1 … 4 5 6 … 42, avec précédent / suivant. */
+export function Pagination({ page, last, onChange }: { page: number; last: number; onChange: (page: number) => void }) {
+  if (last <= 1) return null;
+  const shown = [...new Set([1, page - 1, page, page + 1, last])].filter(n => n >= 1 && n <= last).sort((a, b) => a - b);
+  return (
+    <nav className="pager" aria-label={t("Pagination")}>
+      <button className="chip" disabled={page <= 1} onClick={() => onChange(page - 1)}>{t("← Précédent")}</button>
+      {shown.map((n, i) => (
+        <Fragment key={n}>
+          {i > 0 && n - shown[i - 1] > 1 && <span className="pager-gap">…</span>}
+          <button className={`chip ${n === page ? "on" : ""}`} aria-current={n === page ? "page" : undefined} onClick={() => onChange(n)}>{n}</button>
+        </Fragment>
+      ))}
+      <button className="chip" disabled={page >= last} onClick={() => onChange(page + 1)}>{t("Suivant →")}</button>
+    </nav>
   );
 }
 

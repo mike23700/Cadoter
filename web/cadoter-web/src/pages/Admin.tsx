@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Link, Navigate, NavLink, Route, Routes } from "react-router-dom";
-import { AdminFaq, api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, User, Wrapping } from "../api";
+import { AdminArticle, AdminFaq, api, ApiError, CustomRequest, formatDateTime as date, formatPrice, Gift, Order, User, Wrapping } from "../api";
 import { ErrorBox, Field, fieldError, LangSwitch, Loading, Modal } from "../components";
 import { t } from "../i18n";
 import { Icon } from "../icons";
@@ -30,6 +30,7 @@ export default function Admin() {
             <NavLink to="/admin/emballages"><Icon name="image" size={18} />{t("Emballages")}</NavLink>
             <NavLink to="/admin/commandes"><Icon name="list" size={18} />{t("Commandes")}</NavLink>
             <NavLink to="/admin/demandes"><Icon name="mail" size={18} />{t("Demandes perso.")}</NavLink>
+            <NavLink to="/admin/inspirations"><Icon name="sparkle" size={18} />{t("Inspirations")}</NavLink>
             <NavLink to="/admin/faq"><Icon name="help" size={18} />{t("FAQ & contact")}</NavLink>
           </>}
         </nav>
@@ -50,6 +51,7 @@ export default function Admin() {
             <Route path="emballages" element={<Wrappings />} />
             <Route path="commandes" element={<Orders />} />
             <Route path="demandes" element={<Requests />} />
+            <Route path="inspirations" element={<Inspirations />} />
             <Route path="faq" element={<Faqs />} />
           </>}
           <Route path="*" element={<Navigate to="/admin" replace />} />
@@ -541,6 +543,131 @@ function Requests() {
         </div>
       )}
     </>
+  );
+}
+
+function Inspirations() {
+  const { notify } = useStore();
+  const { data, error, loading, reload } = useApi<AdminArticle[]>("/admin/inspirations");
+  const [editing, setEditing] = useState<AdminArticle | "new" | null>(null);
+
+  const toggle = async (a: AdminArticle) => {
+    await api(`/admin/inspirations/${a.id}`, { method: "PUT", body: { is_active: !a.is_active } });
+    reload();
+  };
+  const remove = async (a: AdminArticle) => {
+    if (!window.confirm(t("Supprimer l'article « {title} » ?", { title: a.title }))) return;
+    await api(`/admin/inspirations/${a.id}`, { method: "DELETE" });
+    notify(t("Article supprimé."));
+    reload();
+  };
+
+  return (
+    <>
+      <div className="admin-head">
+        <h1 className="h1">{t("Inspirations")}</h1>
+        <button className="btn btn-primary" onClick={() => setEditing("new")}>{t("Nouvel article")} <Icon name="plus" size={18} /></button>
+      </div>
+      <p className="muted small" style={{ marginBottom: 20 }}>{t("Articles de la page Inspirations et de l'accueil, du plus récent au plus ancien. Le plus récent est mis à la une. Un article hors ligne n'est plus visible.")}</p>
+      <ErrorBox error={error} onRetry={reload} />
+      {loading && !data ? <Loading /> : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th></th><th>{t("Article")}</th><th>{t("Thème")}</th><th>{t("Publié le")}</th><th>{t("En ligne")}</th><th></th></tr></thead>
+            <tbody>
+              {data?.map(a => (
+                <tr key={a.id}>
+                  <td className="cell-thumb">{a.image_url && <img src={a.image_url} alt="" className="table-thumb" />}</td>
+                  <td className="cell-main"><b>{a.title}</b>{a.excerpt && <><br /><span className="note">{a.excerpt.length > 120 ? `${a.excerpt.slice(0, 120)}…` : a.excerpt}</span></>}</td>
+                  <td data-label={t("Thème")}>{a.tag}</td>
+                  <td data-label={t("Publié le")}>{date(a.created_at)}</td>
+                  <td data-label={t("En ligne")}><button className={`switch ${a.is_active ? "on" : ""}`} onClick={() => toggle(a)} aria-label={t("En ligne")} aria-pressed={a.is_active} /></td>
+                  <td className="actions">
+                    {a.is_active && <Link className="link-plain" to={`/inspirations/${a.slug}`} target="_blank">{t("Voir")}</Link>}
+                    <button className="link" onClick={() => setEditing(a)}>{t("Modifier")}</button>
+                    <button className="link-plain" onClick={() => remove(a)}>{t("Supprimer")}</button>
+                  </td>
+                </tr>
+              ))}
+              {data?.length === 0 && <tr><td colSpan={6} className="muted" style={{ textAlign: "center", padding: 30 }}>{t("Aucun article. Créez le premier !")}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && <InspirationForm article={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); reload(); notify(t("Article enregistré.")); }} />}
+    </>
+  );
+}
+
+function InspirationForm({ article, onClose, onSaved }: { article: AdminArticle | null; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    title: article?.title ?? "", tag: article?.tag ?? "", excerpt: article?.excerpt ?? "", body: article?.body ?? "",
+    title_en: article?.title_en ?? "", tag_en: article?.tag_en ?? "", excerpt_en: article?.excerpt_en ?? "", body_en: article?.body_en ?? "",
+    minutes: article?.minutes != null ? String(article.minutes) : "", is_active: article?.is_active ?? true,
+  });
+  const [image, setImage] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(article?.image_url ?? null);
+  const [err, setErr] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const fd = new FormData();
+    Object.entries(form).forEach(([k, v]) => fd.append(k, typeof v === "boolean" ? (v ? "1" : "0") : v));
+    if (image) fd.append("image", image);
+    setBusy(true);
+    setErr(null);
+    try {
+      await api(article ? `/admin/inspirations/${article.id}` : "/admin/inspirations", { body: fd });
+      onSaved();
+    } catch (e) {
+      setErr(e);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={article ? t("Modifier l'article") : t("Nouvel article")} onClose={onClose}>
+      <form className="form" onSubmit={submit}>
+        <div className="image-picker">
+          {preview ? <img src={preview} alt="" /> : <div className="photo-empty"><Icon name="image" size={30} /></div>}
+          <Field label={t("Photo (JPG, PNG, WEBP · 5 Mo max.)")} error={fieldError(err, "image")}>
+            <input className="input" type="file" accept="image/png,image/jpeg,image/webp" onChange={e => {
+              const f = e.target.files?.[0] ?? null;
+              setImage(f);
+              if (f) setPreview(URL.createObjectURL(f));
+            }} />
+          </Field>
+        </div>
+        <Field label={t("Titre *")} error={fieldError(err, "title")}><input className="input" required maxLength={255} value={form.title} onChange={set("title")} placeholder={t("Pour papa, une attention qui compte.")} /></Field>
+        <div className="grid-2">
+          <Field label={t("Thème *")} error={fieldError(err, "tag")}><input className="input" required maxLength={80} value={form.tag} onChange={set("tag")} placeholder={t("Fête des pères")} /></Field>
+          <Field label={t("Temps de lecture (min)")} error={fieldError(err, "minutes")}><input className="input" type="number" min={1} max={120} value={form.minutes} onChange={set("minutes")} placeholder={t("Automatique")} /></Field>
+        </div>
+        <Field label={t("Résumé")} error={fieldError(err, "excerpt")}><textarea className="input" maxLength={500} rows={2} value={form.excerpt} onChange={set("excerpt")} /></Field>
+        <Field label={t("Texte de l'article *")} error={fieldError(err, "body")}>
+          <textarea className="input" required maxLength={20000} rows={8} value={form.body} onChange={set("body")} />
+          <p className="note">{t("Laissez une ligne vide entre deux paragraphes.")}</p>
+        </Field>
+        <details>
+          <summary className="link-plain" style={{ cursor: "pointer" }}>{t("Version anglaise (facultative)")}</summary>
+          <div className="form" style={{ marginTop: 14 }}>
+            <Field label={t("Titre en anglais")} error={fieldError(err, "title_en")}><input className="input" maxLength={255} value={form.title_en} onChange={set("title_en")} /></Field>
+            <Field label={t("Thème en anglais")} error={fieldError(err, "tag_en")}><input className="input" maxLength={80} value={form.tag_en} onChange={set("tag_en")} /></Field>
+            <Field label={t("Résumé en anglais")} error={fieldError(err, "excerpt_en")}><textarea className="input" maxLength={500} rows={2} value={form.excerpt_en} onChange={set("excerpt_en")} /></Field>
+            <Field label={t("Texte en anglais")} error={fieldError(err, "body_en")}><textarea className="input" maxLength={20000} rows={6} value={form.body_en} onChange={set("body_en")} /></Field>
+          </div>
+        </details>
+        <label className="check">
+          <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} />
+          <span className="box"><Icon name="check" size={14} /></span>{t("En ligne (visible sur le site)")}
+        </label>
+        <ErrorBox error={err instanceof ApiError && !Object.keys(err.errors).length ? err : null} />
+        <button className="btn btn-primary btn-block" disabled={busy}>{busy ? t("Enregistrement…") : t("Enregistrer")}</button>
+      </form>
+    </Modal>
   );
 }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Models\Gift;
+use App\Models\Inspiration;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Wrapping;
@@ -48,6 +49,12 @@ class CatalogController extends Controller
 
         $limit = min((int) $request->query('limit', 60) ?: 60, 100);
 
+        // Avec ?page=N : réponse paginée { data, current_page, last_page, total… } (catalogue web).
+        // Sans : simple tableau limité, comme avant (accueil, listes, application mobile).
+        if ($request->has('page')) {
+            return response()->json($q->paginate(min((int) $request->query('per_page', 24) ?: 24, 100))->withQueryString());
+        }
+
         return response()->json($q->limit($limit)->get());
     }
 
@@ -87,6 +94,17 @@ class CatalogController extends Controller
             'gifts' => $partner->gifts()->with('partner:id,shop_name')->where('is_active', true)
                 ->orderByDesc('is_featured')->latest()->get(),
         ]);
+    }
+
+    public function inspirations()
+    {
+        return response()->json(Inspiration::where('is_active', true)->latest()->orderByDesc('id')->get()
+            ->map(fn (Inspiration $a) => $a->localized(false)));
+    }
+
+    public function inspiration(string $slug)
+    {
+        return response()->json(Inspiration::where('is_active', true)->where('slug', $slug)->firstOrFail()->localized());
     }
 
     public function faqs()

@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Faq;
 use App\Models\Gift;
+use App\Models\Inspiration;
 use App\Models\User;
 use App\Models\Wrapping;
 use Illuminate\Database\Seeder;
@@ -90,6 +91,53 @@ class DatabaseSeeder extends Seeder
             ];
             foreach ($faqs as $i => [$q, $a, $qEn, $aEn]) {
                 Faq::create(['question' => $q, 'answer' => $a, 'question_en' => $qEn, 'answer_en' => $aEn, 'position' => $i + 1]);
+            }
+        }
+
+        // Articles « Inspirations » de départ, modifiables dans l'administration
+        if (! Inspiration::exists()) {
+            $articles = [
+                ['soutenir-un-proche', 'Soutien', 'Support', 3, 'bouquet.jpg',
+                    'Soutenir un proche en deuil.', 'Supporting a grieving loved one.',
+                    'Des attentions sobres et respectueuses, à son rythme.', 'Simple, respectful gestures, at their own pace.',
+                    ["Dans les moments difficiles, les gestes simples comptent : un repas apporté, des fleurs sobres, une présence. Évitez les cadeaux trop festifs.",
+                        "Une liste de soutien permet à l'entourage de proposer une aide concrète sans doublon, en respectant le rythme de la famille."],
+                    ['In difficult times, simple gestures matter: a meal brought over, understated flowers, being there. Avoid gifts that are too festive.',
+                        "A support list lets friends and family offer practical help without duplicates, while respecting the family's pace."]],
+                ['noel', 'Noël', 'Christmas', 4, 'article-noel.jpg',
+                    'Un Noël plein de petites attentions.', 'A Christmas full of small gestures.',
+                    "Organiser les cadeaux en famille sans doublon, c'est possible.", 'Organising family gifts without duplicates is possible.',
+                    ["À Noël, les cadeaux se multiplient et les doublons aussi. Une liste partagée permet à chacun de réserver ce qu'il offre, sans gâcher la surprise.",
+                        'Choisissez un emballage pour chaque cadeau : rosé, kraft ou bleu ciel, le soin du dernier détail fait toute la différence au pied du sapin.'],
+                    ["At Christmas, gifts multiply and so do duplicates. A shared list lets everyone reserve what they're giving, without spoiling the surprise.",
+                        'Choose a wrapping for each gift: rosé, kraft or sky blue, care down to the last detail makes all the difference under the tree.']],
+                ['merci-maman', 'Fête des mères', "Mother's Day", 5, 'article-maman.jpg',
+                    'Lui dire merci, tout simplement.', 'Simply saying thank you.',
+                    'Des fleurs, un mot, un moment : les petites attentions qui touchent le plus.', 'Flowers, a note, a moment: the small gestures that touch the most.',
+                    ["Un bouquet de fleurs séchées dure des mois et rappelle votre attention à chaque regard. Ajoutez un petit mot manuscrit : c'est souvent ce qu'elle gardera le plus longtemps.",
+                        "Pour aller plus loin, demandez un cadeau personnalisé : nous vous accompagnons pour composer une attention qui lui ressemble, jusqu'au choix de l'emballage."],
+                    ['A bouquet of dried flowers lasts for months and recalls your thoughtfulness at every glance. Add a handwritten note: it\'s often what she will keep the longest.',
+                        "To go further, request a custom gift: we'll help you put together something that suits her, right down to the wrapping."]],
+                ['pour-papa', 'Fête des pères', "Father's Day", 4, 'article-papa.jpg',
+                    'Pour papa, une attention qui compte.', 'For Dad, a gift that matters.',
+                    "Un moment partagé, un objet qui lui ressemble : nos pistes pour lui dire ce qu'il représente pour vous.", 'A shared moment, an object that suits him: our ideas to tell him what he means to you.',
+                    ["Les pères ont souvent du mal à dire ce qui leur ferait plaisir. Plutôt que de chercher l'objet parfait, pensez à ce qu'il aime faire : lire le journal au calme, écouter ses vieux disques, recevoir la famille le dimanche.",
+                        "Un rituel du thé, une enceinte pour sa musique ou un simple déjeuner partagé : l'important est que le cadeau raconte quelque chose de votre lien.",
+                        "Et si vous hésitez, créez une liste avec vos frères et sœurs : chacun choisit, personne n'offre deux fois la même chose."],
+                    ['Fathers often find it hard to say what they would like. Rather than looking for the perfect object, think about what he loves doing: reading the paper in peace, listening to his old records, having the family over on Sundays.',
+                        'A tea ritual, a speaker for his music or a simple shared lunch: what matters is that the gift says something about your bond.',
+                        "And if you're unsure, create a list with your brothers and sisters: everyone chooses, and nobody gives the same thing twice."]],
+            ];
+            // Créés du plus ancien au plus récent : « Pour papa » reste l'article à la une
+            foreach ($articles as $i => [$slug, $tag, $tagEn, $minutes, $file, $title, $titleEn, $excerpt, $excerptEn, $body, $bodyEn]) {
+                $article = new Inspiration([
+                    'slug' => $slug, 'tag' => $tag, 'tag_en' => $tagEn, 'minutes' => $minutes,
+                    'title' => $title, 'title_en' => $titleEn, 'excerpt' => $excerpt, 'excerpt_en' => $excerptEn,
+                    'body' => implode("\n\n", $body), 'body_en' => implode("\n\n", $bodyEn),
+                ]);
+                $article->image_path = $this->image($file, 'inspirations');
+                $article->created_at = now()->subMinutes(count($articles) - $i);
+                $article->save();
             }
         }
     }

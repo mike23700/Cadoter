@@ -1,6 +1,6 @@
 import { createContext, DependencyList, Fragment, ReactNode, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { api, ApiError, Gift, Meta, token, User } from "./api";
+import { api, ApiError, cachedApi, Gift, Meta, peekApi, token, User } from "./api";
 import { getLang, hasStoredLang, Lang, setLang, t } from "./i18n";
 
 type Store = {
@@ -116,19 +116,24 @@ export function useStore() {
   return s;
 }
 
-/** Chargement d'une ressource de l'API avec états de chargement / erreur. */
+/** Chargement d'une ressource de l'API (avec cache, voir cachedApi) et états de chargement / erreur. */
 export function useApi<T>(path: string | null, deps: DependencyList = []) {
-  const [data, setData] = useState<T | null>(null);
+  const [data, setData] = useState<T | null>(() => (path ? peekApi<T>(path) ?? null : null));
   const [error, setError] = useState<ApiError | null>(null);
-  const [loading, setLoading] = useState(!!path);
+  const [loading, setLoading] = useState(() => !!path && peekApi(path) === undefined);
   const [n, setN] = useState(0);
+  const force = useRef(false);
 
   useEffect(() => {
     if (!path) { setLoading(false); return; }
+    const forced = force.current;
+    force.current = false;
+    const cached = forced ? undefined : peekApi<T>(path);
+    if (cached !== undefined) { setData(cached); setError(null); setLoading(false); return; }
     let alive = true;
     setLoading(true);
     setError(null);
-    api<T>(path)
+    cachedApi<T>(path, forced)
       .then(d => alive && setData(d))
       .catch(e => alive && setError(e instanceof ApiError ? e : new ApiError(String(e), 0)))
       .finally(() => alive && setLoading(false));
@@ -136,7 +141,7 @@ export function useApi<T>(path: string | null, deps: DependencyList = []) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, n, ...deps]);
 
-  return { data, setData, error, loading, reload: () => setN(x => x + 1) };
+  return { data, setData, error, loading, reload: () => { force.current = true; setN(x => x + 1); } };
 }
 
 /** Redirige vers /connexion si l'utilisateur n'est pas connecté (ou pas admin). */

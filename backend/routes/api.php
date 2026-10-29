@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\FaqController as AdminFaq;
 use App\Http\Controllers\Api\Admin\GiftController as AdminGift;
+use App\Http\Controllers\Api\Admin\InspirationController as AdminInspiration;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrder;
 use App\Http\Controllers\Api\Admin\PartnerController;
 use App\Http\Controllers\Api\Admin\UserController as AdminUser;
@@ -34,6 +35,8 @@ Route::get('/meta', [CatalogController::class, 'meta']);
 Route::get('/gifts', [CatalogController::class, 'gifts']);
 Route::get('/gifts/{slug}', [CatalogController::class, 'gift']);
 Route::get('/faqs', [CatalogController::class, 'faqs']);
+Route::get('/inspirations', [CatalogController::class, 'inspirations']);
+Route::get('/inspirations/{slug}', [CatalogController::class, 'inspiration']);
 Route::get('/shops/{partner}', [CatalogController::class, 'shop'])->whereNumber('partner');
 
 Route::get('/l/{code}', [SharedListController::class, 'show']);
@@ -92,6 +95,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/faqs/{faq}', [AdminFaq::class, 'destroy']);
         Route::get('/settings', [AdminFaq::class, 'settings']);
         Route::put('/settings', [AdminFaq::class, 'updateSettings']);
+        Route::get('/inspirations', [AdminInspiration::class, 'index']);
+        Route::post('/inspirations', [AdminInspiration::class, 'store']);
+        Route::post('/inspirations/{inspiration}', [AdminInspiration::class, 'update']);
+        Route::put('/inspirations/{inspiration}', [AdminInspiration::class, 'update']);
+        Route::delete('/inspirations/{inspiration}', [AdminInspiration::class, 'destroy']);
         Route::get('/wrappings', [AdminWrapping::class, 'index']);
         Route::post('/wrappings', [AdminWrapping::class, 'store']);
         Route::post('/wrappings/{wrapping}', [AdminWrapping::class, 'update']);
