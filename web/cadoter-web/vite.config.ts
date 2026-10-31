@@ -10,11 +10,13 @@ const backend = "http://localhost:8001";
 const PREVIEW_BOTS = /whatsapp|facebookexternalhit|facebot|meta-externalagent|twitterbot|telegrambot|slackbot|discordbot|linkedinbot|skypeuripreview|pinterest|googlebot|bingbot|embedly|vkshare|snapchat/i;
 
 const proxy: Record<string, string | ProxyOptions> = {
-  "/api": backend,
-  "/storage": backend,
+  // xfwd : transmet l'IP du visiteur à l'API (limites de débit par visiteur, et non pour tout le proxy)
+  "/api": { target: backend, xfwd: true },
+  "/storage": { target: backend, xfwd: true },
   // Lien partagé d'une liste (/l/CODE) : aperçu pour les robots, application pour les visiteurs
   "^/l/[^/?]+": {
     target: backend,
+    xfwd: true,
     changeOrigin: false, // garde le domaine public (ngrok) pour les liens de l'aperçu
     rewrite: path => path.replace(/^\/l\//, "/apercu/l/"),
     bypass: req => (PREVIEW_BOTS.test(req.headers["user-agent"] ?? "") ? undefined : "/index.html"),

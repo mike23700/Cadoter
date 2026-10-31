@@ -13,3 +13,6 @@ Schedule::command(SendImportantDateReminders::class)
     ->dailyAt('08:00')
     ->timezone(config('app.timezone'))
     ->withoutOverlapping();
+
+// Jetons de connexion expirés (voir sanctum.expiration)
+Schedule::command('sanctum:prune-expired --hours=24')->daily();

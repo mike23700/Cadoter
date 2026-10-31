@@ -15,7 +15,7 @@ class GiftController extends Controller
         if (! $request->user()->isAdmin()) {
             $q->where('partner_id', $request->user()->id);
         }
-        if ($s = $request->query('q')) {
+        if (is_string($s = $request->query('q')) && ($s = trim($s)) !== '') {
             $q->where('name', 'like', "%$s%");
         }
 

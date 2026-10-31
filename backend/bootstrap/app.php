@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetLocale;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,7 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->api(prepend: [\App\Http\Middleware\SetLocale::class]);
+        // Proxys de confiance (Vite, ngrok, Docker, répartiteur de charge) : seule leur
+        // en-tête X-Forwarded-* est crue, pour connaître la vraie IP du visiteur (limites de débit)
+        $middleware->trustProxies(at: array_filter(explode(',', (string) env(
+            'TRUSTED_PROXIES', '127.0.0.1,::1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16',
+        ))));
+        $middleware->append(SecurityHeaders::class);
+        $middleware->api(prepend: [SetLocale::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

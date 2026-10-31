@@ -21,12 +21,12 @@ use App\Http\Middleware\EnsureAdminOrPartner;
 use Illuminate\Support\Facades\Route;
 
 // ---- Public ----
-Route::middleware('throttle:10,1')->group(function () {
+Route::middleware('throttle:auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
 });
 
-Route::middleware('throttle:5,1')->group(function () {
+Route::middleware('throttle:password-reset')->group(function () {
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });
@@ -39,25 +39,28 @@ Route::get('/inspirations', [CatalogController::class, 'inspirations']);
 Route::get('/inspirations/{slug}', [CatalogController::class, 'inspiration']);
 Route::get('/shops/{partner}', [CatalogController::class, 'shop'])->whereNumber('partner');
 
-Route::get('/l/{code}', [SharedListController::class, 'show']);
-Route::post('/l/{code}/items/{item}/reserve', [SharedListController::class, 'reserve'])->middleware('throttle:20,1');
+Route::middleware('throttle:shared-list')->group(function () {
+    Route::get('/l/{code}', [SharedListController::class, 'show']);
+    Route::post('/l/{code}/items/{item}/reserve', [SharedListController::class, 'reserve'])
+        ->whereNumber('item')->middleware('throttle:public-write');
+});
 
-Route::middleware('throttle:20,1')->group(function () {
+Route::middleware('throttle:public-write')->group(function () {
     Route::post('/orders', [OrderController::class, 'store']);
     Route::post('/custom-requests', [OrderController::class, 'customRequest']);
-    Route::post('/assistant/suggest', [AssistantController::class, 'suggest']);
 });
+Route::post('/assistant/suggest', [AssistantController::class, 'suggest'])->middleware('throttle:assistant');
 // Diagnostic temporaire de la « page blanche » (voir ClientLogController)
-Route::post('/client-log', [ClientLogController::class, 'store'])->middleware('throttle:60,1');
+Route::post('/client-log', [ClientLogController::class, 'store'])->middleware('throttle:client-log');
 
 // Recherche web (payante) : plus limitée
-Route::post('/assistant/external', [AssistantController::class, 'external'])->middleware('throttle:6,1');
+Route::post('/assistant/external', [AssistantController::class, 'external'])->middleware('throttle:assistant-external');
 
 // ---- Connecté ----
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'update']);
-    Route::put('/me/password', [AuthController::class, 'updatePassword'])->middleware('throttle:5,1');
+    Route::put('/me/password', [AuthController::class, 'updatePassword'])->middleware('throttle:password-change');
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/lists', [ListController::class, 'index']);
@@ -66,7 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::match(['put', 'post'], '/lists/{list}/update', [ListController::class, 'update']);
     Route::put('/lists/{list}', [ListController::class, 'update']);
     Route::delete('/lists/{list}', [ListController::class, 'destroy']);
-    Route::post('/lists/{list}/items', [ListController::class, 'addItem']);
+    Route::post('/lists/{list}/items', [ListController::class, 'addItem'])->middleware('throttle:link-preview');
     Route::post('/lists/{list}/items/manual', [ListController::class, 'addManualItem']);
     Route::put('/lists/{list}/items/{item}', [ListController::class, 'updateItem']);
     Route::delete('/lists/{list}/items/{item}', [ListController::class, 'removeItem']);

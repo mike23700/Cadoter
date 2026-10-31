@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Jetons de l'API valables 90 jours par défaut (un jeton volé ne reste pas valable indéfiniment)
+    'expiration' => env('SANCTUM_EXPIRATION', 60 * 24 * 90),
 
     /*
     |--------------------------------------------------------------------------

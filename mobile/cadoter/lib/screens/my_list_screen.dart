@@ -34,7 +34,7 @@ class _MyListScreenState extends State<MyListScreen> {
 
   Future<void> _load() async {
     try {
-      final l = GiftList.fromJson(await Api.instance.get('/lists/${widget.listId}'));
+      final l = GiftList.fromJson(await Api.instance.get('/lists/${widget.listId}', fresh: true));
       if (mounted) setState(() { _list = l; _error = null; });
     } catch (e) {
       if (mounted) setState(() => _error = e);

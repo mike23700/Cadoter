@@ -16,13 +16,17 @@ String get apiUrl {
   return 'http://localhost:8001/api';
 }
 
-/// Les URL d'images renvoyées par l'API pointent sur localhost : on les réécrit vers l'hôte de l'API.
+/// Les URL d'images renvoyées par l'API suivent APP_URL (localhost, tunnel ngrok…), souvent injoignable
+/// depuis le téléphone : les fichiers /storage/ sont relus directement sur l'hôte de l'API.
 String? fixUrl(String? url) {
   if (url == null) return null;
   final api = Uri.parse(apiUrl);
   final u = Uri.tryParse(url);
-  if (u == null || (u.host != 'localhost' && u.host != '127.0.0.1')) return url;
-  return u.replace(host: api.host, port: api.port).toString();
+  if (u == null || !u.hasScheme) return url;
+  if (u.path.startsWith('/storage/') || u.host == 'localhost' || u.host == '127.0.0.1') {
+    return u.replace(scheme: api.scheme, host: api.host, port: api.port).toString();
+  }
+  return url;
 }
 
 class ApiException implements Exception {
@@ -48,6 +52,7 @@ class Api {
   Future<String?> loadToken() async => _token = await _storage.read(key: _tokenKey);
 
   Future<void> setToken(String? token) async {
+    clearCache(); // autre utilisateur : les données en cache ne sont plus les siennes
     _token = token;
     token == null ? await _storage.delete(key: _tokenKey) : await _storage.write(key: _tokenKey, value: token);
   }
@@ -61,26 +66,49 @@ class Api {
         ...?extra,
       };
 
-  Future<dynamic> get(String path, {Map<String, String>? headers, Duration? timeout}) =>
-      _send(() => http.get(Uri.parse('$apiUrl$path'), headers: _headers(headers)), timeout: timeout);
+  // Cache mémoire des lectures (GET) : un écran déjà vu (filtres, fiche cadeau…) s'affiche sans
+  // nouvel appel tant qu'il a moins de 5 min et qu'aucune écriture n'a eu lieu (comme sur le web).
+  static const _cacheTtl = Duration(minutes: 5);
+  final _cache = <String, ({DateTime at, Future<dynamic> future})>{};
 
-  Future<dynamic> post(String path, [Map<String, dynamic>? body]) => _send(() => http.post(
+  void clearCache() => _cache.clear();
+
+  /// GET avec cache ; les appels simultanés au même chemin partagent la même requête.
+  /// [fresh] ignore le cache (tirer pour actualiser, bouton Réessayer).
+  Future<dynamic> get(String path, {Map<String, String>? headers, Duration? timeout, bool fresh = false}) {
+    final key = '${I18n.lang}|$path';
+    final hit = _cache[key];
+    if (!fresh && headers == null && hit != null && DateTime.now().difference(hit.at) < _cacheTtl) return hit.future;
+    final future = _send(() => http.get(Uri.parse('$apiUrl$path'), headers: _headers(headers)), timeout: timeout);
+    if (headers == null) {
+      final entry = (at: DateTime.now(), future: future);
+      _cache[key] = entry;
+      // Une erreur n'est jamais gardée en cache
+      future.catchError((_) {
+        if (identical(_cache[key], entry)) _cache.remove(key);
+        return null;
+      });
+    }
+    return future;
+  }
+
+  Future<dynamic> post(String path, [Map<String, dynamic>? body]) => _send(write: true, () => http.post(
         Uri.parse('$apiUrl$path'),
         headers: _headers({'Content-Type': 'application/json'}),
         body: jsonEncode(body ?? {}),
       ));
 
-  Future<dynamic> put(String path, Map<String, dynamic> body) => _send(() => http.put(
+  Future<dynamic> put(String path, Map<String, dynamic> body) => _send(write: true, () => http.put(
         Uri.parse('$apiUrl$path'),
         headers: _headers({'Content-Type': 'application/json'}),
         body: jsonEncode(body),
       ));
 
-  Future<dynamic> delete(String path) => _send(() => http.delete(Uri.parse('$apiUrl$path'), headers: _headers()));
+  Future<dynamic> delete(String path) => _send(write: true, () => http.delete(Uri.parse('$apiUrl$path'), headers: _headers()));
 
   /// Envoi multipart (création de liste avec image).
   Future<dynamic> multipart(String path, Map<String, String> fields, {File? file, String fileField = 'image'}) =>
-      _send(() async {
+      _send(write: true, () async {
         final req = http.MultipartRequest('POST', Uri.parse('$apiUrl$path'))
           ..headers.addAll(_headers())
           ..fields.addAll(fields);
@@ -88,12 +116,15 @@ class Api {
         return http.Response.fromStream(await req.send());
       });
 
-  Future<dynamic> _send(Future<http.Response> Function() call, {Duration? timeout}) async {
+  Future<dynamic> _send(Future<http.Response> Function() call, {Duration? timeout, bool write = false}) async {
     http.Response res;
     try {
       res = await call().timeout(timeout ?? const Duration(seconds: 20));
     } catch (_) {
       throw ApiException(tr('Impossible de joindre le serveur. Vérifiez votre connexion.'));
+    } finally {
+      // Toute écriture peut modifier des données déjà lues : on repart d'un cache vide
+      if (write) clearCache();
     }
     if (res.statusCode == 204) return null;
     dynamic data;
@@ -124,18 +155,19 @@ class Api {
 int? _int(dynamic v) => v == null ? null : (v is int ? v : int.tryParse('$v'));
 
 class User {
-  User({required this.id, required this.name, required this.email, this.phone, required this.role});
+  User({required this.id, required this.name, required this.email, this.phone, required this.role, this.language = 'fr'});
   final int id;
   final String name;
   final String email;
   final String? phone;
   final String role;
+  final String language;
 
   String get firstName => name.split(' ').first;
   String get initials => name.trim().split(RegExp(r'\s+')).take(2).map((p) => p[0].toUpperCase()).join();
 
   factory User.fromJson(Map<String, dynamic> j) =>
-      User(id: j['id'], name: j['name'], email: j['email'], phone: j['phone'], role: j['role'] ?? 'user');
+      User(id: j['id'], name: j['name'], email: j['email'], phone: j['phone'], role: j['role'] ?? 'user', language: j['language'] ?? 'fr');
 }
 
 class Gift {
@@ -149,6 +181,7 @@ class Gift {
     required this.city,
     this.area,
     this.sellerName = 'cadoter.com',
+    this.partnerId,
     this.imageUrl,
     this.imageUrls = const [],
     required this.available,
@@ -164,6 +197,8 @@ class Gift {
   final String city;
   final String? area;
   final String sellerName;
+  /// Boutique partenaire qui vend ce cadeau (null : vendu par cadoter.com).
+  final int? partnerId;
   final String? imageUrl;
   final List<String> imageUrls;
   final bool available;
@@ -182,6 +217,7 @@ class Gift {
         city: j['city'] ?? '',
         area: j['area'],
         sellerName: j['seller_name'] ?? 'cadoter.com',
+        partnerId: _int(j['partner_id']),
         imageUrl: fixUrl(j['image_url']),
         imageUrls: (j['image_urls'] as List? ?? const [])
             .map((url) => fixUrl(url as String?))
@@ -317,11 +353,13 @@ class Wrapping {
 }
 
 class Meta {
-  Meta({required this.occasions, required this.forWho, required this.cities, required this.wrappings});
+  Meta({required this.occasions, required this.forWho, required this.cities, required this.wrappings, this.whatsapp});
   final List<String> occasions;
   final List<String> forWho;
   final List<String> cities;
   final List<Wrapping> wrappings;
+  /// Numéro WhatsApp du contact (réglé dans l'administration).
+  final String? whatsapp;
 
   static final fallback = Meta(
     occasions: const ['Anniversaire', 'Mariage', 'Naissance', 'Dot', 'Décès · Soutenir un proche', 'Autre'],
@@ -335,6 +373,58 @@ class Meta {
         forWho: List<String>.from(j['for_who'] ?? const []),
         cities: List<String>.from(j['cities'] ?? const []),
         wrappings: (j['wrappings'] as List? ?? []).map((e) => Wrapping.fromJson(e)).toList(),
+        whatsapp: (j['contact'] as Map?)?['whatsapp'] as String?,
+      );
+}
+
+/// Date à célébrer d'un proche (rappels par e-mail J-7, J-3 et le jour J).
+class ImportantDate {
+  ImportantDate({required this.id, required this.personName, required this.title, required this.eventDate, required this.nextOccurrence});
+  final int id;
+  final String personName;
+  final String title;
+  final DateTime eventDate;
+  final DateTime nextOccurrence;
+
+  factory ImportantDate.fromJson(Map<String, dynamic> j) => ImportantDate(
+        id: j['id'],
+        personName: j['person_name'],
+        title: j['title'],
+        eventDate: DateTime.parse(j['event_date']),
+        nextOccurrence: DateTime.parse(j['next_occurrence']),
+      );
+}
+
+/// Idée trouvée hors catalogue par l'assistante, sur un site marchand.
+class ExternalIdea {
+  ExternalIdea({required this.title, required this.url, this.image, this.price, this.currency, required this.site, required this.reason, this.card = ''});
+  final String title;
+  final String url;
+  final String? image;
+  final int? price;
+  final String? currency;
+  final String site;
+  final String reason;
+  final String card;
+
+  /// Prix en FCFA seulement (les autres devises ne sont pas converties).
+  int? get priceFcfa => currency == 'FCFA' ? price : null;
+
+  String get priceLabel => price == null
+      ? tr('Prix sur le site')
+      : currency == 'FCFA'
+          ? formatPrice(price)
+          : '$price ${currency ?? ''}'.trim();
+
+  factory ExternalIdea.fromJson(Map<String, dynamic> j) => ExternalIdea(
+        title: j['title'] ?? '',
+        url: j['url'] ?? '',
+        image: j['image'],
+        price: _int(j['price']),
+        currency: j['currency'],
+        site: j['site'] ?? '',
+        reason: j['reason'] ?? '',
+        card: j['card'] ?? '',
       );
 }
 
@@ -357,4 +447,9 @@ String formatPrice(int? n, [String currency = 'FCFA']) {
 
 const _months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const _monthsEn = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+/// Mois et année (« mars 2026 »).
+String formatMonthYear(DateTime d) => '${(I18n.lang == 'en' ? _monthsEn : _months)[d.month - 1]} ${d.year}';
+
+/// Date complète (« 12 mars 2027 »).
+String formatFullDate(DateTime d) => '${formatDate(d)} ${d.year}';
 String formatDate(DateTime d) => I18n.lang == 'en' ? '${d.day} ${_monthsEn[d.month - 1]}' : '${d.day} ${_months[d.month - 1]}';

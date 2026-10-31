@@ -9,7 +9,10 @@ import 'wrapping_screen.dart';
 
 /// « Mobile · Cadeau personnalisé » : formulaire, l'équipe recontacte (pas de commande directe).
 class CustomGiftScreen extends StatefulWidget {
-  const CustomGiftScreen({super.key});
+  const CustomGiftScreen({super.key, this.initialDescription, this.initialBudget});
+  /// Pré-remplissage depuis l'assistante (« Le commander via CADOTER »).
+  final String? initialDescription;
+  final int? initialBudget;
 
   @override
   State<CustomGiftScreen> createState() => _CustomGiftScreenState();
@@ -20,8 +23,8 @@ class _CustomGiftScreenState extends State<CustomGiftScreen> {
   late final _user = SessionScope.read(context).user;
   late final _name = TextEditingController(text: _user?.name);
   late final _phone = TextEditingController(text: _user?.phone);
-  final _budget = TextEditingController();
-  final _desc = TextEditingController();
+  late final _budget = TextEditingController(text: widget.initialBudget?.toString());
+  late final _desc = TextEditingController(text: widget.initialDescription);
   bool _busy = false;
   ApiException? _error;
 

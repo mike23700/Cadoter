@@ -16,7 +16,7 @@ class SharePreviewController extends Controller
     public function list(Request $request, string $code)
     {
         $front = $this->publicOrigin($request);
-        $list = GiftList::with('owner', 'items.gift')->where('code', $code)->first();
+        $list = GiftList::with('owner', 'items.gift.partner:id,shop_name')->where('code', $code)->first();
 
         if (! $list) {
             return response()->view('share-preview', [
@@ -60,8 +60,19 @@ class SharePreviewController extends Controller
      */
     private function publicOrigin(Request $request): string
     {
+        $front = rtrim((string) config('services.frontend_url'), '/');
         $proto = trim(explode(',', (string) $request->header('X-Forwarded-Proto'))[0]) ?: $request->getScheme();
-        $host = trim(explode(',', (string) $request->header('X-Forwarded-Host'))[0]) ?: $request->getHttpHost();
+        $host = strtolower(trim(explode(',', (string) $request->header('X-Forwarded-Host'))[0]) ?: $request->getHttpHost());
+
+        // Les en-têtes Host / X-Forwarded-Host sont falsifiables : seuls le site configuré,
+        // localhost et les tunnels ngrok sont acceptés, sinon l'aperçu pointe vers FRONTEND_URL
+        $name = (string) parse_url("http://$host", PHP_URL_HOST);
+        $allowed = $name === parse_url($front, PHP_URL_HOST)
+            || in_array($name, ['localhost', '127.0.0.1'], true)
+            || preg_match('/^[a-z0-9-]+(\.[a-z0-9-]+)*\.ngrok(-free)?\.(app|dev|io)$/', $name);
+        if (! $allowed || ! preg_match('/^[a-z0-9.\-]+(:\d{1,5})?$/', $host)) {
+            return $front;
+        }
 
         return (in_array($proto, ['http', 'https'], true) ? $proto : 'https').'://'.$host;
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/api.dart';
 import '../core/i18n.dart';
@@ -216,7 +217,7 @@ class GiftTile extends StatelessWidget {
           const SizedBox(height: 10),
           Text(gift.name, style: T.sans(14, weight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 6),
-          Text('Vendu par ${gift.sellerName}', style: T.sans(11, color: AppColors.ink), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(tr('Vendu par {seller}', {'seller': gift.sellerName}), style: T.sans(11, color: AppColors.dark), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 4),
           Text(gift.place, style: T.sans(12, color: AppColors.gray)),
           const SizedBox(height: 8),
@@ -388,6 +389,12 @@ class Loader extends StatelessWidget {
       const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator(color: AppColors.magenta)));
 }
 
+/// Ouvre un lien dans l'application adaptée (navigateur, WhatsApp…).
+Future<void> openUrl(BuildContext context, String url) async {
+  final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication).catchError((_) => false);
+  if (!ok && context.mounted) toast(context, 'Impossible d’ouvrir ce lien.');
+}
+
 void toast(BuildContext context, String message) =>
     ScaffoldMessenger.of(context)..hideCurrentSnackBar()..showSnackBar(SnackBar(content: Text(tr(message))));
 
@@ -405,6 +412,7 @@ class _ApiBuilderState<D> extends State<ApiBuilder<D>> {
   late Future<D> _future = widget.load();
 
   Future<void> _reload() async {
+    Api.instance.clearCache();
     final f = widget.load();
     setState(() => _future = f);
     await f.catchError((_) => null as D);

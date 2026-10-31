@@ -7,6 +7,7 @@ import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'auth_screens.dart';
 import 'create_list_screen.dart';
+import 'info_screens.dart';
 import 'order_screen.dart';
 import 'wrapping_screen.dart';
 
@@ -115,7 +116,16 @@ class _GiftScreenState extends State<GiftScreen> {
               Flexible(child: Text(gift.place, textAlign: TextAlign.right, style: T.sans(12, color: AppColors.gray))),
             ]),
             const SizedBox(height: 8),
-            Text('Vendu par ${gift.sellerName}', style: T.sans(13, weight: FontWeight.w600)),
+            if (gift.partnerId != null)
+              InkWell(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ShopScreen(id: gift.partnerId!))),
+                child: Text.rich(TextSpan(style: T.sans(13, weight: FontWeight.w600), children: [
+                  TextSpan(text: '${tr('Vendu par')} '),
+                  TextSpan(text: gift.sellerName, style: const TextStyle(color: AppColors.magenta, decoration: TextDecoration.underline)),
+                ])),
+              )
+            else
+              Text(tr('Vendu par {seller}', {'seller': gift.sellerName}), style: T.sans(13, weight: FontWeight.w600)),
             if (gift.description != null) ...[
               const SizedBox(height: 18),
               Text(gift.description!, style: T.sans(14, color: AppColors.gray)),

@@ -15,7 +15,7 @@ class SharedListController extends Controller
     {
         $list = $this->open($request, $code);
 
-        return response()->json(ListController::present($list->load('items.gift', 'owner'), false));
+        return response()->json(ListController::present($list->load('items.gift.partner:id,shop_name', 'owner:id,name'), false));
     }
 
     /** Une personne par cadeau : verrou de ligne pour éviter les doubles réservations. */
@@ -44,7 +44,8 @@ class SharedListController extends Controller
     private function open(Request $request, string $code): GiftList
     {
         $list = GiftList::where('code', $code)->firstOrFail();
-        if ($list->is_locked && $request->input('access_code', $request->header('X-Access-Code')) !== $list->access_code) {
+        $given = $request->input('access_code', $request->header('X-Access-Code'));
+        if ($list->is_locked && ! (is_string($given) && hash_equals((string) $list->access_code, $given))) {
             abort(response()->json(['message' => __("Cette liste est protégée par un code d'accès."), 'locked' => true, 'title' => $list->title], 423));
         }
 

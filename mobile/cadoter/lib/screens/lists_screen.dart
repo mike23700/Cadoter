@@ -26,6 +26,7 @@ class _ListsScreenState extends State<ListsScreen> {
       ((await Api.instance.get('/lists')) as List).map((e) => GiftList.fromJson(e)).toList();
 
   Future<void> _reload() async {
+    Api.instance.clearCache(); // réservations faites entre-temps par les proches
     final f = _load();
     setState(() => _future = f);
     await f.catchError((_) => <GiftList>[]);
