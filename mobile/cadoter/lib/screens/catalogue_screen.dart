@@ -60,7 +60,9 @@ class _CatalogueScreenState extends State<CatalogueScreen> {
   Future<void> _loadPage(int page) async {
     final gen = _generation;
     final qs = Uri(queryParameters: {..._params(), 'page': '$page', 'per_page': '$_perPage'}).query;
-    final res = await Api.instance.get('/gifts?$qs') as Map<String, dynamic>;
+    final raw = await Api.instance.get('/gifts?$qs');
+    // API sans pagination (ancienne version du serveur) : tableau simple, traité comme une page unique
+    final res = raw is List ? <String, dynamic>{'data': raw, 'current_page': 1, 'last_page': 1, 'total': raw.length} : raw as Map<String, dynamic>;
     if (gen != _generation || !mounted) return;
     setState(() {
       if (page == 1) _items.clear();
