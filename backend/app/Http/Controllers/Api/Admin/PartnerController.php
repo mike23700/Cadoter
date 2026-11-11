@@ -31,11 +31,12 @@ class PartnerController extends Controller
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
 
-        $partner = User::create([
+        $partner = (new User)->forceFill([
             ...$data,
             'role' => 'partner',
             'language' => 'fr',
         ]);
+        $partner->save();
 
         return response()->json($partner, 201);
     }

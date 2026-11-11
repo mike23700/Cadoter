@@ -7,7 +7,9 @@ import '../core/theme.dart';
 import '../widgets/common.dart';
 import 'auth_screens.dart';
 import 'gift_screen.dart';
+import 'info_screens.dart';
 import 'language_screen.dart';
+import 'profile_screen.dart';
 
 /// « Mobile · Compte et paramètres »
 class AccountScreen extends StatelessWidget {
@@ -29,12 +31,12 @@ class AccountScreen extends StatelessWidget {
         );
 
     final rows = <(IconData, String, String?, VoidCallback)>[
-      (Icons.person_outline, 'Mon profil', null, () => user == null ? ensureLoggedIn(context) : info('Mon profil', '${user.name}\n${user.email}\n${user.phone ?? ''}')),
+      (Icons.person_outline, 'Mon profil', null, () async { if (await ensureLoggedIn(context) && context.mounted) push(const ProfileScreen()); }),
       (Icons.format_list_bulleted, 'Mes listes', null, () => session.goTab(2)),
       (Icons.history, 'Mon historique', null, () async { if (await ensureLoggedIn(context) && context.mounted) push(const OrdersScreen()); }),
       (Icons.favorite_border, 'Mes favoris', null, () async { if (await ensureLoggedIn(context) && context.mounted) push(const FavoritesScreen()); }),
-      (Icons.help_outline, 'FAQ', null, () => info('FAQ', 'Réserver un cadeau prévient les autres proches : ce n’est pas un achat. Le paiement se fait par Orange Money ou MTN Mobile Money, la facture est émise par la boutique.')),
-      (Icons.mail_outline, 'Nous contacter', null, () => info('Nous contacter', 'contact@cadoter.com\nWhatsApp : +225 07 00 00 00 00')),
+      (Icons.help_outline, 'FAQ', null, () => push(const FaqScreen())),
+      (Icons.mail_outline, 'Nous contacter', null, () => push(const ContactScreen())),
       (Icons.share_outlined, 'Nos réseaux sociaux', null, () => info('Nos réseaux sociaux', 'Instagram, Facebook et TikTok : @cadoter')),
       (Icons.language, 'Langue', session.language == 'fr' ? 'Français' : 'English', () => push(const LanguageScreen(fromSettings: true))),
       (Icons.verified_user_outlined, 'Politique', null, () => info('Politique de confidentialité', 'Nous collectons uniquement les données nécessaires à vos listes et commandes. Elles ne sont jamais revendues.')),
@@ -146,7 +148,7 @@ class OrdersScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: const TopBar('Mon historique'),
         body: ApiBuilder<List<dynamic>>(
-          load: () async => (await Api.instance.get('/orders/mine')) as List,
+          load: () async => (await Api.instance.get('/orders/mine', fresh: true)) as List,
           builder: (context, orders, _) => orders.isEmpty
               ? const ErrorRetry('Aucune commande pour l’instant.')
               : ListView.separated(

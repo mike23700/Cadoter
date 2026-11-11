@@ -9,6 +9,7 @@ use App\Models\GiftList;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
@@ -47,7 +48,7 @@ class OrderController extends Controller
     {
         return response()->json(
             Order::with('wrapping:id,name')
-                ->when($request->query('status'), fn ($q, $s) => $q->where('status', $s))
+                ->when(in_array($request->query('status'), Order::STATUSES, true), fn ($q) => $q->where('status', $request->query('status')))
                 ->latest()->limit(200)->get()
         );
     }
@@ -55,7 +56,17 @@ class OrderController extends Controller
     public function update(Request $request, Order $order)
     {
         $data = $request->validate(['status' => ['required', Rule::in(Order::STATUSES)]]);
-        $order->update($data);
+        DB::transaction(function () use ($order, $data) {
+            $wasCancelled = $order->status === 'annulee';
+            $order->update($data);
+            // Le stock réservé à la commande est rendu à l'annulation (et repris si elle est rétablie)
+            $gift = $order->gift_id ? Gift::whereKey($order->gift_id)->whereNotNull('stock')->lockForUpdate()->first() : null;
+            if ($gift && ! $wasCancelled && $data['status'] === 'annulee') {
+                $gift->increment('stock', $order->quantity);
+            } elseif ($gift && $wasCancelled && $data['status'] !== 'annulee') {
+                $gift->decrement('stock', min($order->quantity, $gift->stock));
+            }
+        });
 
         // Paiement validé : le cadeau de la liste devient réservé pour les autres proches
         if (in_array($data['status'], ['payee', 'livree'], true) && $order->listItem && $order->listItem->status === 'Disponible') {

@@ -16,7 +16,7 @@ class UserController extends Controller
         if (in_array($role = $request->query('role'), ['user', 'partner', 'admin'], true)) {
             $q->where('role', $role);
         }
-        if ($s = trim((string) $request->query('q'))) {
+        if (is_string($s = $request->query('q')) && ($s = trim($s)) !== '') {
             $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('email', 'like', "%$s%")
                 ->orWhere('phone', 'like', "%$s%")->orWhere('shop_name', 'like', "%$s%"));
         }

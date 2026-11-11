@@ -193,6 +193,10 @@ select.input { appearance: none; padding-right: 40px; background: #fff url("data
 .radio-list button.on::before { background: var(--mag); border-color: var(--mag); width: 10px; height: 10px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 28px; }
 .toolbar .sort { font-size: 12px; color: var(--gray); border: 0; background: transparent; outline: 0; cursor: pointer; }
+.pager { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; margin-top: 36px; }
+.pager .chip { min-width: 34px; justify-content: center; cursor: pointer; }
+.pager .chip:disabled { opacity: .4; cursor: default; border-color: var(--line); }
+.pager-gap { color: var(--gray); padding: 0 2px; }
 .custom-cta { margin-top: 28px; padding: 28px 26px; }
 .custom-cta h2 { font-size: 26px; margin-bottom: 14px; }
 .custom-cta p { font-size: 14px; color: var(--gray); margin-bottom: 14px; }

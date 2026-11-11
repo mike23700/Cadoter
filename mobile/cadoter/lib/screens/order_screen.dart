@@ -23,7 +23,9 @@ class _OrderScreenState extends State<OrderScreen> {
   late final _user = SessionScope.read(context).user;
   late final _name = TextEditingController(text: _user?.name);
   late final _phone = TextEditingController(text: _user?.phone);
+  late final _email = TextEditingController(text: _user?.email);
   late final _city = TextEditingController(text: widget.gift.city);
+  int _quantity = 1;
   final _address = TextEditingController();
   final _message = TextEditingController();
   late Wrapping? _wrap = widget.wrapping;
@@ -41,7 +43,8 @@ class _OrderScreenState extends State<OrderScreen> {
         'wrapping_id': _wrap?.id,
         'customer_name': _name.text.trim(),
         'customer_phone': _phone.text.trim(),
-        'customer_email': _user?.email,
+        'customer_email': _email.text.trim().isEmpty ? null : _email.text.trim(),
+        'quantity': _quantity,
         'delivery_city': _city.text.trim(),
         'delivery_address': _address.text.trim(),
         'message': _message.text.trim(),
@@ -70,7 +73,7 @@ class _OrderScreenState extends State<OrderScreen> {
   @override
   Widget build(BuildContext context) {
     final g = widget.gift;
-    final total = g.price + (_wrap?.price ?? 0);
+    final total = g.price * _quantity + (_wrap?.price ?? 0);
     return Scaffold(
       appBar: const TopBar('Commander'),
       body: Form(
@@ -95,6 +98,14 @@ class _OrderScreenState extends State<OrderScreen> {
           const SizedBox(height: 26),
           LabeledField(label: 'Nom *', controller: _name, validator: _req, errorText: _error?.field('customer_name')),
           LabeledField(label: 'Téléphone Mobile Money *', controller: _phone, keyboard: TextInputType.phone, validator: _req, hint: '+225 07 00 00 00 00', errorText: _error?.field('customer_phone')),
+          LabeledField(label: 'Email', controller: _email, keyboard: TextInputType.emailAddress, hint: 'aicha@exemple.com', errorText: _error?.field('customer_email')),
+          const FieldLabel('Quantité'),
+          Row(children: [
+            IconButton.outlined(onPressed: _quantity > 1 ? () => setState(() => _quantity--) : null, icon: const Icon(Icons.remove, size: 18)),
+            SizedBox(width: 48, child: Text('$_quantity', textAlign: TextAlign.center, style: T.sans(15, weight: FontWeight.w600))),
+            IconButton.outlined(onPressed: _quantity < 20 ? () => setState(() => _quantity++) : null, icon: const Icon(Icons.add, size: 18)),
+          ]),
+          const SizedBox(height: 18),
           LabeledField(label: 'Ville de livraison', controller: _city),
           LabeledField(
             label: 'Lieu de livraison *',

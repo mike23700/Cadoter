@@ -15,7 +15,8 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'language', 'role', 'shop_name'])]
+// « role » volontairement absent : il ne se change que par forceFill (administration, seeder)
+#[Fillable(['name', 'email', 'phone', 'password', 'language', 'shop_name'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {

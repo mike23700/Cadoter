@@ -89,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: GestureDetector(
-                  onTap: () => toast(context, 'Écrivez-nous à contact@cadoter.com pour réinitialiser votre mot de passe.'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForgotPasswordScreen(email: _login.text.contains('@') ? _login.text.trim() : null))),
                   child: Text(tr('Mot de passe oublié ?'), style: T.sans(12, color: AppColors.magenta)),
                 ),
               ),
@@ -202,6 +202,78 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             ]),
           ),
+        ),
+      );
+}
+
+/// « Mot de passe oublié » : envoie par e-mail un lien pour choisir un nouveau mot de passe.
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({super.key, this.email});
+  final String? email;
+
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
+
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+  final _form = GlobalKey<FormState>();
+  late final _email = TextEditingController(text: widget.email);
+  bool _busy = false;
+  String? _sent;
+  ApiException? _error;
+
+  Future<void> _submit() async {
+    if (!_form.currentState!.validate()) return;
+    setState(() { _busy = true; _error = null; });
+    try {
+      final res = await Api.instance.post('/forgot-password', {'email': _email.text.trim()});
+      setState(() => _sent = '${res['message']}');
+    } on ApiException catch (e) {
+      setState(() => _error = e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: const TopBar('Mot de passe oublié'),
+        body: Form(
+          key: _form,
+          child: ListView(padding: const EdgeInsets.fromLTRB(kGutter, 12, kGutter, 28), children: [
+            Text(tr('Mot de passe oublié.'), style: T.serif(32)),
+            const SizedBox(height: 16),
+            if (_sent != null) ...[
+              Panel(
+                pink: true,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  const Icon(Icons.mark_email_read_outlined, color: AppColors.magenta, size: 30),
+                  const SizedBox(height: 12),
+                  Text(_sent!, style: T.sans(14)),
+                  const SizedBox(height: 10),
+                  Text(tr('Pensez à vérifier vos courriers indésirables. Le lien est valable 60 minutes.'), style: T.sans(12, color: AppColors.gray)),
+                ]),
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton('Retour à la connexion', onPressed: () => Navigator.pop(context)),
+            ] else ...[
+              Text(tr('Indiquez l’e-mail de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.'),
+                  style: T.sans(14, color: AppColors.gray)),
+              const SizedBox(height: 24),
+              LabeledField(
+                label: 'Email *', controller: _email, keyboard: TextInputType.emailAddress, hint: 'aicha@exemple.com',
+                autofill: const [AutofillHints.email], errorText: _error?.field('email'),
+                validator: (v) => (v ?? '').trim().contains('@') ? null : tr('Saisissez une adresse e-mail valide.'),
+              ),
+              if (_error != null && _error!.errors.isEmpty) ...[
+                Text(_error!.message, style: T.sans(12, color: AppColors.error)),
+                const SizedBox(height: 14),
+              ],
+              PrimaryButton('Recevoir le lien', loading: _busy, onPressed: _submit),
+              const SizedBox(height: 12),
+              SecondaryButton('Retour à la connexion', onPressed: () => Navigator.pop(context)),
+            ],
+          ]),
         ),
       );
 }

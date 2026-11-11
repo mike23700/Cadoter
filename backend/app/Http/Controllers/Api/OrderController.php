@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Wrapping;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
@@ -19,11 +20,11 @@ class OrderController extends Controller
         $data = $request->validate([
             'gift_id' => ['required', 'exists:gifts,id'],
             'list_item_id' => ['nullable', 'exists:list_items,id'],
-            'wrapping_id' => ['nullable', 'exists:wrappings,id'],
+            'wrapping_id' => ['nullable', Rule::exists('wrappings', 'id')->where('is_active', true)],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'customer_name' => ['required', 'string', 'max:120'],
             'customer_phone' => ['required', 'string', 'max:30'],
-            'customer_email' => ['nullable', 'email'],
+            'customer_email' => ['nullable', 'email', 'max:190'],
             'delivery_city' => ['nullable', 'string', 'max:80'],
             'delivery_address' => ['required', 'string', 'max:255'],
             'message' => ['nullable', 'string', 'max:1000'],
@@ -77,9 +78,9 @@ class OrderController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'phone' => ['required', 'string', 'max:30'],
-            'budget' => ['required', 'integer', 'min:1000'],
+            'budget' => ['required', 'integer', 'min:1000', 'max:2000000000'],
             'description' => ['required', 'string', 'max:3000'],
-            'wrapping_id' => ['nullable', 'exists:wrappings,id'],
+            'wrapping_id' => ['nullable', Rule::exists('wrappings', 'id')->where('is_active', true)],
         ]);
 
         $req = CustomRequest::create([...$data, 'user_id' => $request->user('sanctum')?->id]);

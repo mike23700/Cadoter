@@ -29,9 +29,12 @@ class Session extends ChangeNotifier {
     await Future.wait([_loadMeta(), if (api.hasToken) _loadUser()]);
   }
 
-  Future<void> _loadMeta() async {
+  /// Recharge les métadonnées (si le démarrage s'est fait hors ligne, ou après un réglage admin).
+  Future<void> reloadMeta() => _loadMeta(fresh: true);
+
+  Future<void> _loadMeta({bool fresh = false}) async {
     try {
-      meta = Meta.fromJson(await api.get('/meta', timeout: _startupTimeout));
+      meta = Meta.fromJson(await api.get('/meta', timeout: _startupTimeout, fresh: fresh));
       notifyListeners();
     } catch (_) {/* hors ligne : valeurs par défaut */}
   }
@@ -95,6 +98,22 @@ class Session extends ChangeNotifier {
       _start(await api.post('/login', {'login': login, 'password': password}));
 
   Future<void> register(Map<String, dynamic> data) async => _start(await api.post('/register', data));
+
+  /// Mise à jour du profil (nom, email, téléphone, langue).
+  Future<void> updateUser(Map<String, dynamic> data) async {
+    final json = await api.put('/me', data) as Map<String, dynamic>;
+    user = User.fromJson(json);
+    (await SharedPreferences.getInstance()).setString('user', jsonEncode(json));
+    if (user!.language != language && (user!.language == 'fr' || user!.language == 'en')) {
+      language = I18n.lang = user!.language;
+      (await SharedPreferences.getInstance()).setString('language', language);
+      I18n.rebuildAll();
+    }
+    notifyListeners();
+  }
+
+  Future<void> updatePassword(String current, String password, String confirmation) async =>
+      api.put('/me/password', {'current_password': current, 'password': password, 'password_confirmation': confirmation});
 
   Future<void> logout() async {
     try {

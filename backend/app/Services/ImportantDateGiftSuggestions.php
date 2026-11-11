@@ -41,6 +41,7 @@ class ImportantDateGiftSuggestions
     public function forEvent(ImportantDate $importantDate, int $eventYear): Collection
     {
         $gifts = Gift::query()
+            ->with('partner:id,shop_name')
             ->where('is_active', true)
             ->where(fn (Builder $query) => $query->whereNull('stock')->orWhere('stock', '>', 0))
             ->orderByDesc('is_featured')

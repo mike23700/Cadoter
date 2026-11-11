@@ -15,14 +15,72 @@ class LinkPreview
 {
     private const USER_AGENT = 'Mozilla/5.0 CadoterBot';
 
-    /** Adresse http(s) vers une IP publique uniquement (protection SSRF). */
-    public static function isSafeUrl(string $url): bool
-    {
-        $host = parse_url($url, PHP_URL_HOST);
-        $ip = $host ? gethostbyname($host) : null;
+    /** Taille maximale d'une page lue (au-delà : aperçu abandonné). */
+    private const MAX_BYTES = 3 * 1024 * 1024;
 
-        return in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true) && $ip
-            && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+    /**
+     * Protection SSRF : adresse http(s), port standard, IP publique
+     * vers laquelle la requête sera épinglée, ou null si l'adresse est refusée.
+     * Toutes les IP du nom (IPv4 et IPv6) doivent être publiques ; la connexion utilise ensuite
+     * cette IP (CURLOPT_RESOLVE) : un DNS qui change de réponse entre-temps ne peut pas viser le réseau interne.
+     *
+     * @return array{host: string, port: int, ip: string}|null
+     */
+    private static function resolve(string $url): ?array
+    {
+        $parts = parse_url($url);
+        $scheme = strtolower($parts['scheme'] ?? '');
+        $host = strtolower(trim($parts['host'] ?? '', '[]'));
+        if (! in_array($scheme, ['http', 'https'], true) || $host === '' || isset($parts['user']) || isset($parts['pass'])) {
+            return null;
+        }
+        $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
+        if (! in_array($port, [80, 443], true)) {
+            return null;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $ips = [$host];
+        } else {
+            $records = @dns_get_record($host, DNS_A | DNS_AAAA) ?: [];
+            $ips = array_values(array_filter(array_map(fn ($r) => $r['ip'] ?? $r['ipv6'] ?? null, $records)));
+            if (! $ips && ($v4 = @gethostbynamel($host))) {
+                $ips = $v4;
+            }
+        }
+        if (! $ips) {
+            return null;
+        }
+        foreach ($ips as $ip) {
+            if (! self::isPublicIp($ip)) {
+                return null;
+            }
+        }
+
+        return ['host' => $host, 'port' => $port, 'ip' => $ips[0]];
+    }
+
+    private static function isPublicIp(string $ip): bool
+    {
+        if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return false;
+        }
+        // Plages absentes des filtres de PHP : partage d'adresses opérateur (CGNAT), IPv4 mappée en IPv6, NAT64
+        foreach (['100.64.0.0/10', '192.0.0.0/24', '198.18.0.0/15'] as $cidr) {
+            if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && self::inCidr($ip, $cidr)) {
+                return false;
+            }
+        }
+
+        return ! preg_match('/^(::ffff:|64:ff9b:|fc|fd|fe80)/i', $ip);
+    }
+
+    private static function inCidr(string $ip, string $cidr): bool
+    {
+        [$net, $bits] = explode('/', $cidr);
+        $mask = -1 << (32 - (int) $bits);
+
+        return (ip2long($ip) & $mask) === (ip2long($net) & $mask);
     }
 
     /**
@@ -31,11 +89,11 @@ class LinkPreview
     public function fetch(string $url): array
     {
         $out = self::empty($url);
-        if (! self::isSafeUrl($url)) {
+        if (! $target = self::resolve($url)) {
             return $out;
         }
         try {
-            return self::parse($url, $this->request()->get($url));
+            return self::parse($url, $this->request(null, $target)->get($url));
         } catch (Throwable) {
             return $out; // l'aperçu est facultatif
         }
@@ -49,11 +107,17 @@ class LinkPreview
      */
     public function fetchMany(array $urls): array
     {
-        $urls = array_values(array_filter(array_unique($urls), self::isSafeUrl(...)));
+        $targets = [];
+        foreach (array_unique($urls) as $u) {
+            if ($t = self::resolve($u)) {
+                $targets[$u] = $t;
+            }
+        }
+        $urls = array_keys($targets);
         if (! $urls) {
             return [];
         }
-        $responses = Http::pool(fn ($pool) => array_map(fn ($u) => $this->request($pool->as($u))->get($u), $urls));
+        $responses = Http::pool(fn ($pool) => array_map(fn ($u) => $this->request($pool->as($u), $targets[$u])->get($u), $urls));
 
         $out = [];
         foreach ($urls as $u) {
@@ -64,11 +128,26 @@ class LinkPreview
         return $out;
     }
 
-    private function request($client = null)
+    private function request($client, array $target)
     {
         // Pas de redirection suivie : sécurité, et sur les boutiques une redirection signale souvent un produit épuisé
-        return ($client ?? Http::getFacadeRoot())->timeout(6)->withOptions(['allow_redirects' => false])
-            ->withHeaders(['User-Agent' => self::USER_AGENT, 'Accept-Language' => 'fr']);
+        return ($client ?? Http::getFacadeRoot())->timeout(6)->connectTimeout(4)->withOptions([
+            'allow_redirects' => false,
+            'curl' => [
+                CURLOPT_RESOLVE => ["{$target['host']}:{$target['port']}:".(str_contains($target['ip'], ':') ? "[{$target['ip']}]" : $target['ip'])],
+            ],
+            'on_headers' => function ($response) {
+                if ((int) $response->getHeaderLine('Content-Length') > self::MAX_BYTES) {
+                    throw new \RuntimeException('Page trop volumineuse.');
+                }
+            },
+            // Taille réellement reçue (Content-Length absent ou faux)
+            'progress' => function ($total, $downloaded) {
+                if ($downloaded > self::MAX_BYTES) {
+                    throw new \RuntimeException('Page trop volumineuse.');
+                }
+            },
+        ])->withHeaders(['User-Agent' => self::USER_AGENT, 'Accept-Language' => 'fr']);
     }
 
     private static function empty(string $url): array
@@ -104,6 +183,10 @@ class LinkPreview
         $out['name'] = (is_string($product['name'] ?? null) ? trim(html_entity_decode($product['name'])) : null) ?: $meta('og:title')
             ?? (preg_match('/<title>([^<]+)/i', $html, $m) ? trim(html_entity_decode($m[1])) : $out['name']);
         $out['image'] = $meta('og:image') ?? (is_string($image) ? $image : null);
+        if ($out['image'] !== null && ! preg_match('#^https?://#i', $out['image'])) {
+            $out['image'] = null; // image relative ou schéma inattendu (data:, javascript:…)
+        }
+        $out['image'] = $out['image'] !== null ? mb_substr($out['image'], 0, 2048) : null;
         $price = $offer['price'] ?? $offer['lowPrice'] ?? $meta('product:price:amount') ?? $meta('og:price:amount');
         $out['price'] = is_numeric(str_replace([' ', ','], ['', '.'], (string) $price)) ? (int) round((float) str_replace([' ', ','], ['', '.'], (string) $price)) : null;
         $out['currency'] = $offer['priceCurrency'] ?? $meta('product:price:currency') ?? $meta('og:price:currency');

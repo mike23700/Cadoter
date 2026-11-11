@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: RefreshIndicator(
         color: AppColors.magenta,
         onRefresh: () async {
+          Api.instance.clearCache();
           final f = _load();
           setState(() => _gifts = f);
           await f.catchError((_) => <Gift>[]);

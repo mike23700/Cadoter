@@ -1,11 +1,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { formatPrice, Gift, qs } from "../api";
-import { Breadcrumb, ErrorBox, Field, GiftCard, GiftGridSkeleton, IllustrativeNote } from "../components";
-import { t } from "../i18n";
+import { cachedApi, formatPrice, Gift, Paginated, qs } from "../api";
+import { Breadcrumb, ErrorBox, Field, GiftCard, GiftGridSkeleton, IllustrativeNote, Pagination } from "../components";
+import { t, tn } from "../i18n";
 import { useApi, useStore } from "../store";
 
-const budgets = [10000, 20000, 30000, 40000, 50000, 100000];
 const sorts: [string, string][] = [["", "Notre sélection"], ["price_asc", "Prix croissant"], ["price_desc", "Prix décroissant"], ["recent", "Nouveautés"]];
 
 export default function Catalog() {
@@ -17,13 +16,26 @@ export default function Catalog() {
   const [draft, setDraft] = useState({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion") });
   useEffect(() => setDraft({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion") }), [params]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const query = qs({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion"), sort: get("sort") });
-  const { data: gifts, error, loading, reload } = useApi<Gift[]>(`/gifts${query}`);
+  const page = Math.max(1, Number(get("page")) || 1);
+  const giftsPath = (n: number) => `/gifts${qs({ q: get("q"), budget: get("budget"), city: get("city"), for_who: get("for_who"), occasion: get("occasion"), sort: get("sort"), page: n })}`;
+  const { data: result, error, loading, reload } = useApi<Paginated<Gift>>(giftsPath(page));
+  const gifts = result?.data;
 
+  // Page suivante préchargée : elle s'affiche immédiatement au clic
+  useEffect(() => {
+    if (result && result.current_page < result.last_page) cachedApi(giftsPath(result.current_page + 1)).catch(() => undefined);
+  }, [result]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tout changement de filtre ou de tri repart de la première page
   const apply = (next: Record<string, string>) => {
     const p = new URLSearchParams(params);
     Object.entries(next).forEach(([k, v]) => (v ? p.set(k, v) : p.delete(k)));
+    if (!("page" in next)) p.delete("page");
     setParams(p);
+  };
+  const goTo = (n: number) => {
+    apply({ page: n > 1 ? String(n) : "" });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
   const submit = (e: FormEvent) => { e.preventDefault(); apply(draft); };
 
@@ -48,11 +60,8 @@ export default function Catalog() {
             <Field label={t("Nom du cadeau")}>
               <input className="input" placeholder={t("Rechercher un cadeau")} value={draft.q} onChange={e => setDraft({ ...draft, q: e.target.value })} />
             </Field>
-            <Field label={t("Budget maximum")}>
-              <select className="input" value={draft.budget} onChange={e => setDraft({ ...draft, budget: e.target.value })}>
-                <option value="">{t("Tous les budgets")}</option>
-                {budgets.map(b => <option key={b} value={b}>{formatPrice(b)}</option>)}
-              </select>
+            <Field label={t("Budget maximum (FCFA)")}>
+              <input className="input" type="number" inputMode="numeric" min={0} step={500} value={draft.budget} onChange={e => setDraft({ ...draft, budget: e.target.value })} placeholder={t("Ex. {n}", { n: "40 000" })} />
             </Field>
             <Field label={t("Type d’événement")}>
               <select className="input" value={draft.occasion} onChange={e => setDraft({ ...draft, occasion: e.target.value })}>
@@ -89,10 +98,16 @@ export default function Catalog() {
               {sorts.map(([v, l]) => <option key={v} value={v}>{t("Trier : {sort}", { sort: t(l) })}</option>)}
             </select>
           </div>
-          <div style={{ marginBottom: 26 }}><IllustrativeNote /></div>
+          <div style={{ marginBottom: 26 }}>
+            {result && <p className="note" style={{ marginBottom: 4 }}>{tn(result.total, "{n} cadeau", "{n} cadeaux")}</p>}
+            <IllustrativeNote />
+          </div>
           <ErrorBox error={error} onRetry={reload} />
           {loading ? <GiftGridSkeleton /> : gifts && gifts.length > 0 ? (
-            <div className="gift-grid">{gifts.map(g => <GiftCard key={g.id} gift={g} />)}</div>
+            <>
+              <div className="gift-grid">{gifts.map(g => <GiftCard key={g.id} gift={g} />)}</div>
+              {result && <Pagination page={result.current_page} last={result.last_page} onChange={goTo} />}
+            </>
           ) : !error && (
             <div className="empty">{t("Aucun cadeau ne correspond à ces critères.")} <button className="link" onClick={() => setParams(new URLSearchParams())}>{t("Voir tous les cadeaux")}</button></div>
           )}

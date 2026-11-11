@@ -16,7 +16,10 @@ class ListController extends Controller
 {
     public function index(Request $request)
     {
-        $lists = $request->user()->lists()->with('items.gift.partner:id,shop_name')->latest()->get();
+        $user = $request->user();
+        $lists = $user->lists()->with('items.gift.partner:id,shop_name')->latest()->get();
+        // Propriétaire déjà connu : évite une requête par liste
+        $lists->each->setRelation('owner', $user);
 
         return response()->json($lists->map(fn ($l) => $this->present($l)));
     }
@@ -48,10 +51,15 @@ class ListController extends Controller
     {
         $this->authorizeOwner($request, $list);
         $data = $this->validated($request, false);
+        $oldImage = null;
         if ($request->hasFile('image')) {
+            $oldImage = $list->image_path;
             $data['image_path'] = $request->file('image')->store('lists', 'public');
         }
         $list->update($data);
+        if ($oldImage) {
+            Storage::disk('public')->delete($oldImage);
+        }
 
         return response()->json($this->present($list->load('items.gift.partner:id,shop_name')));
     }
@@ -59,7 +67,8 @@ class ListController extends Controller
     public function destroy(Request $request, GiftList $list): Response
     {
         $this->authorizeOwner($request, $list);
-        $images = $list->items()->whereNotNull('external_image_path')->pluck('external_image_path')->all();
+        $images = $list->items()->whereNotNull('external_image_path')->pluck('external_image_path')
+            ->push($list->image_path)->filter()->all();
         $list->delete();
         Storage::disk('public')->delete($images);
 
@@ -72,7 +81,7 @@ class ListController extends Controller
         $this->authorizeOwner($request, $list);
         $data = $request->validate([
             'gift_id' => ['required_without:url', 'nullable', 'exists:gifts,id'],
-            'url' => ['required_without:gift_id', 'nullable', 'url', 'max:2048'],
+            'url' => ['required_without:gift_id', 'nullable', 'url:http,https', 'max:2048'],
             'name' => ['nullable', 'string', 'max:190'],
             'price' => ['nullable', 'integer', 'min:0'],
         ]);

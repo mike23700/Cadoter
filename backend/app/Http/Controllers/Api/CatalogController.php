@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
 use App\Models\Gift;
+use App\Models\Inspiration;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Wrapping;
@@ -19,34 +20,42 @@ class CatalogController extends Controller
     public function gifts(Request $request)
     {
         $q = Gift::query()->with('partner:id,shop_name')->where('is_active', true);
+        // Paramètres envoyés en tableau (?city[]=…) : ignorés au lieu de provoquer une erreur
+        $param = fn (string $k) => is_string($v = $request->query($k)) ? trim($v) : null;
 
-        if ($s = trim((string) $request->query('q'))) {
+        if ($s = $param('q')) {
             $q->where(fn ($w) => $w->where('name', 'like', "%$s%")->orWhere('description', 'like', "%$s%"));
         }
-        if ($budget = (int) $request->query('budget')) {
+        if ($budget = (int) $param('budget')) {
             $q->where('price', '<=', $budget);
         }
-        if ($city = $request->query('city')) {
+        if ($city = $param('city')) {
             $q->where('city', $city);
         }
-        if ($for = $request->query('for_who')) {
+        if ($for = $param('for_who')) {
             $q->whereJsonContains('for_who', $for);
         }
-        if ($occ = $request->query('occasion')) {
+        if ($occ = $param('occasion')) {
             $q->whereJsonContains('occasions', $occ);
         }
         if ($request->boolean('featured')) {
             $q->where('is_featured', true);
         }
 
-        match ($request->query('sort')) {
+        match ($param('sort')) {
             'price_asc' => $q->orderBy('price'),
             'price_desc' => $q->orderByDesc('price'),
             'recent' => $q->latest(),
             default => $q->orderByDesc('is_featured')->latest(),
         };
 
-        $limit = min((int) $request->query('limit', 60) ?: 60, 100);
+        $limit = min((int) $param('limit') ?: 60, 100);
+
+        // Avec ?page=N : réponse paginée { data, current_page, last_page, total… } (catalogue web).
+        // Sans : simple tableau limité, comme avant (accueil, listes, application mobile).
+        if ($request->has('page')) {
+            return response()->json($q->paginate(min((int) $param('per_page') ?: 24, 100))->withQueryString());
+        }
 
         return response()->json($q->limit($limit)->get());
     }
@@ -87,6 +96,17 @@ class CatalogController extends Controller
             'gifts' => $partner->gifts()->with('partner:id,shop_name')->where('is_active', true)
                 ->orderByDesc('is_featured')->latest()->get(),
         ]);
+    }
+
+    public function inspirations()
+    {
+        return response()->json(Inspiration::where('is_active', true)->latest()->orderByDesc('id')->get()
+            ->map(fn (Inspiration $a) => $a->localized(false)));
+    }
+
+    public function inspiration(string $slug)
+    {
+        return response()->json(Inspiration::where('is_active', true)->where('slug', $slug)->firstOrFail()->localized());
     }
 
     public function faqs()
